@@ -42,8 +42,8 @@ add(new THREE.CircleGeometry(.35,24),new THREE.MeshBasicMaterial({color:0xfff1c4
 // door (hinged on the left edge)
 add(bx(1.7,3.5,.1),new THREE.MeshBasicMaterial({color:0x0f2a22}),3.05,1.75,-2.97);
 add(bx(1.9,.12,.12),fr,3.05,3.55,-2.93);add(bx(.12,3.6,.12),fr,2.15,1.8,-2.93);add(bx(.12,3.6,.12),fr,3.95,1.8,-2.93);
-const dg=new THREE.Group();dg.position.set(2.2,0,-2.92);dg.rotation.y=-1.15;S.add(dg);
-add(bx(1.7,3.4,.1),M(0x6b4a33),.85,1.7,0,dg);
+const DOORW=1.7,dg=new THREE.Group();dg.position.set(2.2,0,-2.92);dg.rotation.y=-1.15;S.add(dg);
+add(bx(DOORW,3.4,.1),M(0x6b4a33),DOORW/2,1.7,0,dg);
 add(new THREE.SphereGeometry(.07,10,8),M(0xd9b45b,{metalness:.6}),1.45,1.6,.1,dg);
 let dk=-1.15,dkK=.05,shake=0;
 
@@ -155,9 +155,64 @@ add(bx(2.6,.5,1),sf,0,.25,.9,ex[0]);add(bx(2.6,.8,.3),sf,0,.7,1.3,ex[0]);add(bx(
 add(bx(2.4,.35,2.8),M(0x3a2a22),0,.18,.3,ex[1]);add(bx(2.2,.3,2.6),M(0xdad4e8),0,.5,.3,ex[1]);add(bx(1,.15,.5),M(0xffffff),0,.7,-.8,ex[1]);add(bx(2.2,.12,1.5),M(0x5a2a6e),0,.66,.6,ex[1]);add(bx(2.4,1,.15),M(0x3a2a22),0,.8,-1.15,ex[1]);
 add(bx(1.1,2.6,1),M(0xd8e0e8),-4.2,1.3,-2.3,ex[2]);add(bx(.06,.8,.08),M(0x555566),-3.8,1.5,-1.77,ex[2]);add(bx(2,.12,1.2),M(0x6b4a33),0,.85,.9,ex[2]);add(new THREE.CylinderGeometry(.12,.12,.85,10),M(0x6b4a33),0,.42,.9,ex[2]);
 
+// floor footprints (x,z) that visitors walk around: keep in sync with the furniture above. The door panel uses dg's real transform.
+dg.updateMatrix();
+const doorA=new THREE.Vector3(0,0,0).applyMatrix4(dg.matrix),doorB=new THREE.Vector3(DOORW,0,0).applyMatrix4(dg.matrix);
+const box=(x,z,w,d)=>({type:'box',x,z,w,d}),circ=(x,z,r)=>({type:'circle',x,z,r});
+const OBST={
+ shared:[box(0,-2.4,4.6,1),circ(-3.9,-1.6,.4),circ(-3.3,1.2,.75),circ(3.6,1.4,.75),circ(-1.6,2,.45),circ(-2.4,-1.3,.4),
+  {type:'seg',x:doorA.x,z:doorA.z,x2:doorB.x,z2:doorB.z,r:.05}],
+ rooms:[[box(0,.95,2.9,1.1)],[box(0,.25,2.4,2.95)],[box(-4.2,-2.3,1.1,1),box(0,.9,2,1.2)]]};
+
 // visitors: people wander in through the door, one per room at a time
 let cur=0;
-const vis=[{m:null},{m:null},{m:null}],DOORP=new THREE.Vector3(3.05,0,-2.3);
+const vis=[{m:null},{m:null},{m:null}],DOORP=new THREE.Vector3(3.05,0,-2.3),ENTRY=new THREE.Vector3(3.4,0,-1.2),SAFE={x:2.6,z:.5};
+
+// walkability: one grid per room (each visitor uses its own room's), built once. A cell is walkable if a visitor can reach it from ENTRY.
+const VR=.3,CELL=.2,X0=-4.7,X1=4.7,Z0=-2.7,Z1=4.6,NX=Math.round((X1-X0)/CELL)+1,NZ=Math.floor((Z1-Z0)/CELL)+1;
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+function hitO(o,x,z,pad){
+ if(o.type==='box')return Math.abs(x-o.x)<o.w/2+pad&&Math.abs(z-o.z)<o.d/2+pad;
+ if(o.type==='circle')return Math.hypot(x-o.x,z-o.z)<o.r+pad;
+ const ax=o.x2-o.x,az=o.z2-o.z,k=Math.max(0,Math.min(1,((x-o.x)*ax+(z-o.z)*az)/(ax*ax+az*az)));
+ return Math.hypot(x-o.x-ax*k,z-o.z-az*k)<o.r+pad}
+const free=(r,x,z,pad)=>x>=X0-1e-6&&x<=X1+1e-6&&z>=Z0-1e-6&&z<=Z1+1e-6&&!OBST.shared.some(o=>hitO(o,x,z,pad))&&!OBST.rooms[r].some(o=>hitO(o,x,z,pad));
+const cellOf=(x,z)=>Math.max(0,Math.min(NZ-1,Math.round((z-Z0)/CELL)))*NX+Math.max(0,Math.min(NX-1,Math.round((x-X0)/CELL)));
+const cellXZ=c=>({x:X0+(c%NX)*CELL,z:Z0+(c/NX|0)*CELL});
+function nbrs(g,c,f){const cx=c%NX,cz=c/NX|0;DIRS.forEach(([a,b])=>{const x=cx+a,z=cz+b;
+ if(x<0||z<0||x>=NX||z>=NZ||!g[z*NX+x]||(a&&b&&(!g[cz*NX+x]||!g[z*NX+cx])))return;f(z*NX+x,a&&b?1.414:1)})}
+const GRID=[0,1,2].map(r=>{const w=new Uint8Array(NX*NZ),g=new Uint8Array(NX*NZ);
+ w.forEach((_,c)=>{const q=cellXZ(c);w[c]=free(r,q.x,q.z,VR)?1:0});
+ const s=cellOf(ENTRY.x,ENTRY.z),st=[s];g[s]=1;
+ while(st.length)nbrs(w,st.pop(),n=>{if(!g[n]){g[n]=1;st.push(n)}});
+ return g});
+function nearest(r,x,z){const g=GRID[r],c0=cellOf(x,z);if(g[c0])return c0;let b=-1,bd=1e9;
+ g.forEach((on,c)=>{if(!on)return;const q=cellXZ(c),d=Math.hypot(q.x-x,q.z-z);if(d<bd){bd=d;b=c}});return b}
+function aStar(r,s,e){const g=GRID[r],cost=new Float32Array(NX*NZ).fill(1e9),from=new Int32Array(NX*NZ).fill(-1),done=new Uint8Array(NX*NZ),open=[s],ex=e%NX,ez=e/NX|0;
+ const h=c=>{const a=Math.abs(c%NX-ex),b=Math.abs((c/NX|0)-ez);return Math.max(a,b)+.414*Math.min(a,b)};cost[s]=0;
+ while(open.length){let bi=0,bf=1e9;open.forEach((c,i)=>{const f=cost[c]+h(c);if(f<bf){bf=f;bi=i}});
+  const c=open[bi];open[bi]=open[open.length-1];open.pop();if(c===e)break;if(done[c])continue;done[c]=1;
+  nbrs(g,c,(n,k)=>{if(cost[c]+k<cost[n]){cost[n]=cost[c]+k;from[n]=c;open.push(n)}})}
+ const p=[];for(let c=e;c!==-1;c=from[c])p.unshift(c);return p}
+function los(r,a,b){const n=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.05);
+ for(let i=1;i<=n;i++)if(!free(r,a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n,VR))return false;return true}
+// A* then line-of-sight smoothing. The start point is left out, since the visitor is already there.
+function pathTo(r,a,b){const p=[a,...aStar(r,nearest(r,a.x,a.z),nearest(r,b.x,b.z)).map(cellXZ),b],out=[];
+ for(let i=0;i<p.length-1;){let j=i+1;while(j+1<p.length&&los(r,p[i],p[j+1]))j++;out.push(p[j]);i=j}
+ return out}
+
+// ?debug: inflated footprints on the floor and the current room's visitor path
+const DBG=/[?&]debug\b/.test(location.search);let dbgG=[],dbgLine=null;
+function outline(o){const p=(x,z)=>new THREE.Vector3(x,.03,z),arc=(x,z,r,a0,a1)=>Array.from({length:17},(_,i)=>{const a=a0+(a1-a0)*i/16;return p(x+Math.cos(a)*r,z+Math.sin(a)*r)});
+ if(o.type==='box'){const a=o.w/2+VR,b=o.d/2+VR;return [p(o.x-a,o.z-b),p(o.x+a,o.z-b),p(o.x+a,o.z+b),p(o.x-a,o.z+b)]}
+ if(o.type==='circle')return arc(o.x,o.z,o.r+VR,0,Math.PI*2);
+ const n=Math.atan2(o.z2-o.z,o.x2-o.x)+Math.PI/2;return [...arc(o.x,o.z,o.r+VR,n,n+Math.PI),...arc(o.x2,o.z2,o.r+VR,n+Math.PI,n+Math.PI*2)]}
+if(DBG){const mat=new THREE.LineBasicMaterial({color:0x7df3c6,transparent:true,opacity:.5,depthTest:false,fog:false});
+ dbgG=[0,1,2].map(r=>{const g=new THREE.Group();OBST.shared.concat(OBST.rooms[r]).forEach(o=>g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline(o)),mat)));S.add(g);return g});
+ dbgLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xffb04a,depthTest:false,fog:false}));dbgLine.renderOrder=9;S.add(dbgLine)}
+function dbgPath(){if(!DBG)return;const v=vis[cur];dbgLine.geometry.dispose();
+ dbgLine.geometry=new THREE.BufferGeometry().setFromPoints(v.m?[v.m.position,...v.path.slice(v.pi)].map(p=>new THREE.Vector3(p.x,.03,p.z)):[])}
+
 function person(){
  const g=new THREE.Group(),c=[0x3b7dd8,0xd84a4a,0x4aa86a,0xd8a83b,0x8a5ad8][Math.random()*5|0];
  add(new THREE.CylinderGeometry(.22,.28,.8,12),M(c),0,1,0,g);
@@ -169,20 +224,31 @@ function person(){
  g.userData={l1,l2,bub,bc,bt};S.add(g);return g}
 function say(v,t){const u=v.m.userData,x=u.bc.getContext('2d');x.clearRect(0,0,128,48);x.fillStyle='#fff';x.fillRect(0,0,128,40);
  x.fillStyle='#000';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText(t,64,28);u.bt.needsUpdate=true;u.bub.visible=true;v.say=performance.now()+1300}
-function setWP(v){v.wp=new THREE.Vector3(-2.4+Math.random()*4.8,0,-.2+Math.random()*2.6)}
+// Waypoints: open floor in front of the furniture and in the camera's view, on cells a visitor can reach.
+function setWP(v,r,from){from=from||v.m.position;const g=GRID[r];let w=null;
+ for(let k=0;k<20&&!w;k++){const z=-1.4+Math.random()*3.8,x=(Math.random()*2-1)*Math.min(4.2,(6.4-z)*.6),c=cellOf(x,z),q=cellXZ(c);
+  if(g[c]&&Math.hypot(q.x-from.x,q.z-from.z)>1.2)w=q}
+ v.wp=w||SAFE;v.path=pathTo(r,from,v.wp);v.pi=0;dbgPath()}
+// Leave via ENTRY, then DOORP. A visitor still in the doorway just turns back.
+function setExit(v,r){v.exit=v.state;v.path=v.entering?[DOORP]:[...pathTo(r,v.m.position,ENTRY),DOORP];v.pi=0;dbgPath()}
 function spawn(i){
  if(vis[i].m)return;const m=person();m.position.copy(DOORP);m.visible=(i===cur);
- vis[i]={m,state:'walk',fear:0,vy:0,say:0,until:performance.now()+22000+Math.random()*10000};setWP(vis[i]);
+ const v=vis[i]={m,state:'walk',fear:0,vy:0,say:0,entering:true,until:performance.now()+22000+Math.random()*10000};
+ setWP(v,i,ENTRY);v.path.unshift(ENTRY);dbgPath();
  window.Room.on&&window.Room.on('arrive',i)}
-function removeV(i,type){S.remove(vis[i].m);vis[i]={m:null};window.Room.on&&window.Room.on(type,i)}
+function removeV(i,type){S.remove(vis[i].m);vis[i]={m:null};dbgPath();window.Room.on&&window.Room.on(type,i)}
 function visitors(t){
  const now=performance.now();
- vis.forEach((v,i)=>{if(!v.m)return;const m=v.m,u=m.userData;
+ vis.forEach((v,i)=>{if(!v.m)return;const m=v.m,u=m.userData,p=m.position;
   if(v.state==='walk'&&now>v.until)v.state='out';
-  const leaving=v.state!=='walk',tgt=leaving?DOORP:v.wp,spd=v.state==='flee'?.09:.025;
-  const dx=tgt.x-m.position.x,dz=tgt.z-m.position.z,d=Math.hypot(dx,dz);
-  if(d<.15){if(leaving){removeV(i,v.state==='flee'?'fled':'leave');return}setWP(v)}
-  else{m.position.x+=dx/d*spd;m.position.z+=dz/d*spd;m.rotation.y=Math.atan2(dx,dz)}
+  const leaving=v.state!=='walk',spd=v.state==='flee'?.09:.025;
+  if(leaving&&v.exit!==v.state)setExit(v,i);
+  // Safety net: paths stay clear, so this only fires if a visitor was somehow put inside something.
+  if(!free(i,p.x,p.z,VR-.1)){const q=cellXZ(nearest(i,p.x,p.z));p.x=q.x;p.z=q.z;v.entering=false;if(leaving)setExit(v,i);else setWP(v,i)}
+  const q=v.path[v.pi],dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz);
+  if(d<=spd){p.x=q.x;p.z=q.z;v.entering=false;
+   if(++v.pi>=v.path.length){if(leaving){removeV(i,v.state==='flee'?'fled':'leave');return}setWP(v,i)}}
+  else{p.x+=dx/d*spd;p.z+=dz/d*spd;m.rotation.y=Math.atan2(dx,dz)}
   v.vy-=.012;m.position.y=Math.max(0,m.position.y+v.vy);if(m.position.y===0)v.vy=0;
   const w=Math.sin(t*(v.state==='flee'?18:8))*.5;u.l1.rotation.x=w;u.l2.rotation.x=-w;
   if(u.bub.visible&&now>v.say)u.bub.visible=false})}
@@ -190,7 +256,8 @@ function scare(n){
  const v=vis[cur];if(!v.m||v.state!=='walk')return{hit:false};
  v.fear+=n;v.vy=.1;const fled=v.fear>=3;say(v,fled?'NOPE!':'Aah!');if(fled)v.state='flee';return{hit:true,fled}}
 function setRoom(i){cur=i;const r=RM[i];wallM.color.setHex(r[0]);sideM.color.setHex(r[1]);floorM.color.setHex(r[2]);
- ex.forEach((g,k)=>g.visible=k===i);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3}
+ ex.forEach((g,k)=>g.visible=k===i);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3;
+ dbgG.forEach((g,k)=>g.visible=k===i);dbgPath()}
 setRoom(0);
 function sched(){setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(free.length)spawn(free[Math.random()*free.length|0]);sched()},9000+Math.random()*14000)}
 setTimeout(()=>spawn(1+(Math.random()*2|0)),5000);sched();
