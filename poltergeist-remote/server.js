@@ -1,5 +1,5 @@
-// Poltergeist Remote server: serves the site and turns free-form speech into room actions with Claude.
-// Zero dependencies, Node 18+. Run:  ANTHROPIC_API_KEY=your-key node server.js   (or put the key in .env)
+// Poltergeist Remote server: serves the site and turns free-form speech into room actions with Gemini.
+// Zero dependencies, Node 18+. Run: GEMINI_API_KEY=your-key node server.js (or put the key in .env)
 // The API key stays on this server and is never sent to the browser.
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -16,12 +16,12 @@ try {
 
 const PORT = +process.env.PORT || 8000;
 const HOST = process.env.HOST || '127.0.0.1'; // set HOST=0.0.0.0 when deploying to a host platform
-const KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-5-5';
-const API = (process.env.CLAUDE_API_URL || 'https://api.anthropic.com').replace(/\/+$/, '');
+const KEY = process.env.GEMINI_API_KEY || '';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const API = (process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
 const ROOM_NAMES = ['Living room', 'Bedroom', 'Kitchen'];
 
-// ---------- What Claude is told ----------
+// ---------- What Gemini is told ----------
 const SYSTEM = `You are the brain of Poltergeist Remote, a smart-room demo where the user is a ghost who cannot touch anything. Turn the user's spoken request into an ordered list of actions by calling run_actions.
 
 The house has 3 rooms: 1 Living room, 2 Bedroom, 3 Kitchen. Each room has its own lights (on or off) and its own TV. The TV has 4 channels: 1 Static, 2 Haunted Home Makeover, 3 Séance Shopping, 4 Ghost News at Nine. Actions apply to the current room unless you switch rooms first. The door can be slammed (a smart plug is triggered too).
@@ -59,6 +59,17 @@ const TOOL = {
   }
 };
 
+// Gemini's REST responseSchema uses uppercase schema type names.
+function geminiSchema(schema) {
+  if (Array.isArray(schema)) return schema.map(geminiSchema);
+  if (!schema || typeof schema !== 'object') return schema;
+  const out = {};
+  for (const [key, value] of Object.entries(schema)) {
+    out[key] = key === 'type' && typeof value === 'string' ? value.toUpperCase() : geminiSchema(value);
+  }
+  return out;
+}
+
 // Never trust the model's output: keep only known actions with in-range values.
 function clean(inp) {
   const out = { actions: [], message: '' };
@@ -80,20 +91,24 @@ function clean(inp) {
 }
 
 async function interpret(text, state) {
-  const res = await fetch(API + '/v1/messages', {
+  const res = await fetch(API + '/v1beta/models/' + encodeURIComponent(MODEL) + ':generateContent', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01' },
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY },
     body: JSON.stringify({
-      model: MODEL, max_tokens: 500, system: SYSTEM,
-      tools: [TOOL], tool_choice: { type: 'tool', name: 'run_actions' },
-      messages: [{ role: 'user', content: 'Current state: ' + JSON.stringify(state) + '\nSpeech: ' + JSON.stringify(text) }]
+      systemInstruction: { parts: [{ text: SYSTEM }] },
+      contents: [{ role: 'user', parts: [{ text: 'Current state: ' + JSON.stringify(state) + '\nSpeech: ' + JSON.stringify(text) }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: geminiSchema(TOOL.input_schema)
+      }
     }),
     signal: AbortSignal.timeout(12000)
   });
   if (!res.ok) throw new Error('upstream ' + res.status);
   const data = await res.json();
-  const block = (data.content || []).find(b => b.type === 'tool_use');
-  return clean(block && block.input);
+  const output = data.candidates?.[0]?.content?.parts?.find(p => typeof p.text === 'string')?.text;
+  if (!output) throw new Error('Gemini returned no structured response');
+  return clean(JSON.parse(output));
 }
 
 // ---------- Small HTTP helpers ----------
@@ -143,7 +158,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/status' && req.method === 'GET') return sendJSON(res, 200, { ai: !!KEY });
     if (p === '/api/interpret') {
       if (req.method !== 'POST') return sendJSON(res, 405, { error: 'POST only' });
-      if (!KEY) return sendJSON(res, 503, { error: 'AI voice is off: ANTHROPIC_API_KEY is not set on the server' });
+      if (!KEY) return sendJSON(res, 503, { error: 'AI voice is off: GEMINI_API_KEY is not set on the server' });
       if (limited(req.socket.remoteAddress || '?')) return sendJSON(res, 429, { error: 'Too many requests, slow down' });
       let body;
       try { body = JSON.parse((await readBody(req)) || '{}'); }
@@ -165,5 +180,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Poltergeist Remote: http://localhost:${PORT}`);
-  console.log(KEY ? `AI voice on (model ${MODEL})` : 'AI voice off: set ANTHROPIC_API_KEY (see .env.example). Everything else works.');
+  console.log(KEY ? `AI voice on (Gemini model ${MODEL})` : 'AI voice off: set GEMINI_API_KEY (see .env.example). Everything else works.');
 });

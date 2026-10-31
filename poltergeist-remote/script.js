@@ -179,15 +179,15 @@ function voiceCmd(t){
  if(m=t.match(/\b(channel|next)\b/)){if(ready('channel',900)){said();channel(1,'voice')}return true}
  return false;
 }
-// ---------- Free-form voice (needs server.js + ANTHROPIC_API_KEY) ----------
+// ---------- Free-form voice (needs server.js + GEMINI_API_KEY) ----------
 // With AI voice on, finished phrases that the keywords don't catch (or that are 4+ words) go to /api/interpret.
-// Claude returns a short list of actions, e.g. "set the mood for a scary movie night" -> lights off, channel, door.
+// Gemini returns a short list of actions, e.g. "set the mood for a scary movie night" -> lights off, channel, door.
 const aiOn=()=>$('aiOn').checked&&!$('aiOn').disabled;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let planId=0;
 fetch('/api/status').then(r=>r.ok?r.json():null).then(j=>{
  if(!j||!j.ai)return;const c=$('aiOn');c.disabled=false;c.checked=true;
- $('aiNote').textContent='(sends what you say to Claude)';$('aiRow').hidden=false}).catch(()=>{});
+ $('aiNote').textContent='(sends what you say to Gemini)';$('aiRow').hidden=false}).catch(()=>{});
 function setLights(on,src){if(lightsOn!==on)lights(src)}
 function setChannel(n,src){if(n-1!==ch)channel(n-1-ch,src)}
 async function runPlan(actions,src){

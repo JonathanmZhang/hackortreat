@@ -26,19 +26,19 @@ Open **Command history** under the room to see every action so far (newest first
 
 ## AI voice commands (free-form)
 
-Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Claude turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
+Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Gemini turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
 
-How it works: the browser sends the finished phrase to `server.js` (`/api/interpret`), which calls the Claude API with your key and a fixed set of allowed actions. The key never reaches the browser, the server only accepts known actions in range from the model's answer, and requests are rate-limited to 20 per minute per address. If the server or the API is unavailable, voice falls back to the keywords. Spoken phrases are only sent when the **AI voice** checkbox is on, and the server doesn't log them.
+How it works: the browser sends the finished phrase to `server.js` (`/api/interpret`), which calls the Gemini API with your key and a fixed set of allowed actions. The key never reaches the browser, the server only accepts known actions in range from the model's answer, and requests are rate-limited to 20 per minute per address. If the server or the API is unavailable, voice falls back to the keywords. Spoken phrases are only sent when the **AI voice** checkbox is on, and the server doesn't log them.
 
 Set it up:
 
-1. Get an API key at https://console.anthropic.com.
-2. Copy `.env.example` to `.env` and paste the key after `ANTHROPIC_API_KEY=`. `.env` is git-ignored, so don't rename it or commit the key anywhere else.
+1. Get a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Copy `.env.example` to `.env` and paste the key after `GEMINI_API_KEY=`. `.env` is git-ignored, so don't rename it or commit the key anywhere else.
 3. Run `node server.js` (Node 18 or newer), open http://localhost:8000 and click **Start voice**. The **AI voice** checkbox turns on by itself when the server has a key.
 
 With AI voice on, the app acts on finished phrases only (after you pause), so a spoken command takes about a second to land. Turn the checkbox off for instant keyword-only voice.
 
-Deploying: GitHub Pages can't run `server.js`, so there the site works but the AI voice checkbox stays disabled. To host it with AI voice, deploy this folder to any Node host (Render, Railway, Fly.io and similar) and set `ANTHROPIC_API_KEY` and `HOST=0.0.0.0` as environment variables there. Anyone who can open that site can spend your API credit, up to the rate limit, so keep it for demos.
+Deploying: GitHub Pages can't run `server.js`, so there the site works but the AI voice checkbox stays disabled. To host it with AI voice, deploy this folder to any Node host (Render, Railway, Fly.io and similar) and set `GEMINI_API_KEY` and `HOST=0.0.0.0` as environment variables there. Anyone who can open that site can spend your API credit, up to the rate limit, so keep it for demos.
 
 ## Accessibility angle
 
@@ -67,7 +67,7 @@ Notes:
 - Head and face sensitivity: the `FACE` object above `detectFace()` (`nod`, `tilt` degrees, `mouth`, `hold` milliseconds)
 - Cooldowns: the millisecond values in `ready('lights', 1200)` and similar
 - Voice words: the patterns in `voiceCmd()`
-- AI voice: the model (`CLAUDE_MODEL` environment variable) and the instructions in `SYSTEM` in `server.js`; add a new action by extending `TOOL`, `clean()` and `runPlan()`
+- AI voice: the model (`GEMINI_MODEL` environment variable) and the instructions in `SYSTEM` in `server.js`; add a new action by extending `TOOL`, `clean()` and `runPlan()`
 - TV channels: the `CH` array at the top of `script.js`
 - Real smart plug: add a `fetch('YOUR_WEBHOOK_URL')` call inside `slam()` (Home Assistant, IFTTT, Shelly, etc.)
 
