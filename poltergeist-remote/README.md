@@ -14,6 +14,10 @@ Keyboard fallbacks: `L` lights, `←` `→` channel, `D` door.
 
 All inputs share one cooldown per action, so a nod plus a spoken "Lights" at the same moment only flicks the lights once.
 
+## Command history
+
+Open **Command history** under the room to see every action so far (newest first), with the time and the input that triggered it: hand, voice, head, face, button or keyboard. The last 200 entries are saved in your browser (localStorage) so they survive a reload. **Clear history** wipes them.
+
 ## Accessibility angle
 
 Hands-free, contact-free control of lights, TV and appliances for people with limited mobility or fine motor control. Someone who can't use their hands can use voice or head movement; someone who can't speak can use hands or head. The head and face tracking can be switched off with the checkbox.

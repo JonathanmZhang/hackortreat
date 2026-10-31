@@ -8,12 +8,34 @@ function thud(){try{const a=new (window.AudioContext||window.webkitAudioContext)
  o.frequency.setValueAtTime(110,a.currentTime);o.frequency.exponentialRampToValueAtTime(35,a.currentTime+.25);
  g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.3);
  o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.3)}catch(e){}}
-function lights(){lightsOn=!lightsOn;Room.lights(lightsOn);log('Lights '+(lightsOn?'on':'off')+'.')}
-function channel(d){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);log('Channel '+(ch+1)+'.')}
-function slam(){Room.slam();thud();
- plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);log('Door slammed. Smart plug triggered.')}
-$('bL').onclick=lights;$('bC').onclick=()=>channel(1);$('bD').onclick=slam;
-addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights();if(e.key==='ArrowRight')channel(1);if(e.key==='ArrowLeft')channel(-1);if(e.key==='d'||e.key==='D')slam()});
+
+// ---------- Command history ----------
+// Every action is recorded with its time and the input that triggered it (hand, voice, head, face, button, keyboard).
+// Saved in localStorage so it survives a page reload.
+const HKEY='poltergeist-history',HMAX=200;
+let cmds=[];
+try{const s=JSON.parse(localStorage.getItem(HKEY)||'[]');if(Array.isArray(s))cmds=s.slice(-HMAX)}catch(e){}
+function saveHist(){try{localStorage.setItem(HKEY,JSON.stringify(cmds))}catch(e){}}
+function renderHist(){
+ const ul=$('histList');ul.textContent='';
+ $('histCount').textContent=cmds.length;$('histEmpty').hidden=cmds.length>0;$('histClear').disabled=!cmds.length;
+ const todayStr=new Date().toDateString();
+ cmds.slice().reverse().forEach(h=>{
+  const d=new Date(h.t),li=document.createElement('li'),t=document.createElement('time'),a=document.createElement('span'),s=document.createElement('span');
+  t.dateTime=d.toISOString();
+  t.textContent=d.toDateString()===todayStr?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}):d.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  a.className='what';a.textContent=h.text;s.className='src';s.textContent=h.src;
+  li.append(t,a,s);ul.appendChild(li)})}
+function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist()}
+$('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
+renderHist();
+
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);act('Lights '+(lightsOn?'on':'off'),src)}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1],src)}
+function slam(src){Room.slam();thud();
+ plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered',src)}
+$('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
+addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard')});
 
 // Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'slam'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -26,10 +48,10 @@ function detect(lm){
  const curled=[[8,6],[12,10],[16,14],[20,18]].every(([t,p])=>dist(lm[t],lm[0])<dist(lm[p],lm[0]));
  const now=performance.now(),x=1-lm[0].x;
  hist.push({t:now,x});while(hist.length&&now-hist[0].t>350)hist.shift();
- if(pinch){if(ready('lights',1200))lights();return}
- if(curled){if(ready('slam',1500))slam();return}
+ if(pinch){if(ready('lights',1200))lights('hand');return}
+ if(curled){if(ready('slam',1500))slam('hand');return}
  if(hist.length>3){const dx=x-hist[0].x;
-  if(Math.abs(dx)>0.28&&ready('channel',900)){channel(dx>0?1:-1);hist.length=0}}
+  if(Math.abs(dx)>0.28&&ready('channel',900)){channel(dx>0?1:-1,'hand');hist.length=0}}
 }
 
 // ---------- Head & face (MediaPipe Face Mesh) ----------
@@ -41,14 +63,14 @@ function detectFace(lm){
  // Open mouth (hold briefly) -> slam the door
  if(dist(lm[13],lm[14])/faceH>FACE.mouth){
   mouthSince=mouthSince||now;
-  if(now-mouthSince>FACE.hold&&ready('slam',1500)){slam();pitchHist.length=0}
+  if(now-mouthSince>FACE.hold&&ready('slam',1500)){slam('face');pitchHist.length=0}
  }else mouthSince=0;
  // Head tilt toward a shoulder (hold briefly) -> change channel. Tilt right = next, left = previous.
  const roll=Math.atan2(lm[263].y-lm[33].y,lm[263].x-lm[33].x)*180/Math.PI,big=Math.abs(roll)>FACE.tilt;
  if(Math.abs(roll)<8)tiltArmed=true;
  if(big&&tiltArmed){
   tiltSince=tiltSince||now;
-  if(now-tiltSince>FACE.hold){if(ready('channel',900))channel(roll<0?1:-1);tiltArmed=false;tiltSince=0;pitchHist.length=0}
+  if(now-tiltSince>FACE.hold){if(ready('channel',900))channel(roll<0?1:-1,'head');tiltArmed=false;tiltSince=0;pitchHist.length=0}
  }else if(!big)tiltSince=0;
  if(big)return;
  // Nod (down and back up) -> flick the lights
@@ -56,7 +78,7 @@ function detectFace(lm){
  pitchHist.push({t:now,p:pitch});while(pitchHist.length&&now-pitchHist[0].t>900)pitchHist.shift();
  if(pitchHist.length>6){
   const ps=pitchHist.map(h=>h.p),hi=Math.max(...ps),lo=Math.min(...ps),range=hi-lo;
-  if(range>FACE.nod&&Math.abs(pitch-ps[0])<range*.4&&ready('lights',1200)){lights();pitchHist.length=0}
+  if(range>FACE.nod&&Math.abs(pitch-ps[0])<range*.4&&ready('lights',1200)){lights('head');pitchHist.length=0}
  }
 }
 
@@ -64,10 +86,10 @@ function detectFace(lm){
 // Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
 function voiceCmd(t){
  t=t.toLowerCase();
- if(/\b(slam|slammed|slams|door)\b/.test(t)){if(ready('slam',1500))slam();return true}
- if(/\b(lights?|flick)\b/.test(t)){if(ready('lights',1200))lights();return true}
- if(/\b(previous|back)\b/.test(t)){if(ready('channel',900))channel(-1);return true}
- if(/\b(channel|next)\b/.test(t)){if(ready('channel',900))channel(1);return true}
+ if(/\b(slam|slammed|slams|door)\b/.test(t)){if(ready('slam',1500))slam('voice');return true}
+ if(/\b(lights?|flick)\b/.test(t)){if(ready('lights',1200))lights('voice');return true}
+ if(/\b(previous|back)\b/.test(t)){if(ready('channel',900))channel(-1,'voice');return true}
+ if(/\b(channel|next)\b/.test(t)){if(ready('channel',900))channel(1,'voice');return true}
  return false;
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;

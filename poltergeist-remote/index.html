@@ -18,6 +18,12 @@
    <div class="plug">Smart plug: <b id="plugState">ON</b></div>
   </div>
   <p id="log" aria-live="polite">Waiting for a gesture.</p>
+  <details class="history" id="history">
+   <summary>Command history (<span id="histCount">0</span>)</summary>
+   <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>
+   <ol id="histList"></ol>
+   <button id="histClear" type="button">Clear history</button>
+  </details>
  </div>
  <div class="side">
   <div class="cam">
