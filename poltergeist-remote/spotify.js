@@ -1,6 +1,6 @@
 // Haunted Jukebox: controls Spotify with Authorization Code + PKCE. Runs in the browser only: no client secret, nothing on server.js.
 // Exposes window.Spotify for script.js and wires the Connect button and the now-playing display. Setup steps are in the README.
-const SPOTIFY_CLIENT_ID='PASTE_CLIENT_ID_HERE';
+const SPOTIFY_CLIENT_ID='6d994bf6b2ea4c7e8217606fa3bcdbaa';
 const HAUNT_PLAYLIST=''; // optional spotify:playlist:... URI, started by the AI or by saying "spooky music"
 (function(){
 'use strict';
