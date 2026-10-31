@@ -124,7 +124,7 @@ function playPause(want,src,uri){
  return true}
 const spooky=src=>playPause(true,src,HAUNT_PLAYLIST||undefined);
 // Polling can end a login, and that must not leave focus on a jukebox nobody can reach.
-Spotify.onChange(s=>{if(focus==='jukebox'&&!s.connected){focus='tv';paintFocus();log('Spotify is disconnected. The ghost is back on the TV.')}});
+Spotify.onChange(s=>{Sfx.duck(s.playing);if(focus==='jukebox'&&!s.connected){focus='tv';paintFocus();log('Spotify is disconnected. The ghost is back on the TV.')}});
 paintFocus();
 
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>next('button');$('bD').onclick=()=>slam('button');
