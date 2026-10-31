@@ -84,7 +84,26 @@
   </div>
  </main>
 
- <aside class="col r" aria-label="Command history">
+ <aside class="col r" aria-label="Jukebox and command history">
+  <section class="jukebox" id="jukebox" aria-labelledby="jTitle">
+   <h2 id="jTitle">Haunted Jukebox</h2>
+   <div class="jnow" id="jNow" hidden>
+    <div class="jart">
+     <i class="jdisc" aria-hidden="true"></i>
+     <img id="jArt" alt="" hidden>
+     <span class="jnotes" aria-hidden="true"><i>♪</i><i>♫</i><i>♪</i></span>
+    </div>
+    <div class="jmeta"><b id="jTrack"></b><span id="jArtist"></span><span class="jlist" id="jList"></span><span class="jdev" id="jDevice"></span></div>
+   </div>
+   <div class="jprog" id="jProg" role="progressbar" aria-label="Track progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i id="jBar"></i></div>
+   <div class="jctl" id="jCtl" hidden>
+    <button id="jPrev" type="button" aria-label="Previous">⏮</button>
+    <button id="jPlay" type="button" aria-label="Play">▶</button>
+    <button id="jNext" type="button" aria-label="Next">⏭</button>
+   </div>
+   <button id="jConnect" type="button" hidden>Connect Spotify</button>
+   <p id="jStatus" aria-live="polite"></p>
+  </section>
   <details class="history" id="history">
    <summary>Command history (<span id="histCount">0</span>)</summary>
    <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>
