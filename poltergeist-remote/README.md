@@ -20,6 +20,20 @@ There are three rooms: living room, bedroom and kitchen. Every so often a visito
 
 Switch rooms with the tabs, keys `1` `2` `3`, a **peace sign** (index and middle finger up) or by saying "living room", "bedroom" or "kitchen". Each room remembers its own lights and TV channel.
 
+## Look and sound
+
+The page is a neon graveyard: the 3D room plays on a dark crypt-green CRT TV in the middle, with cyan, magenta and acid-green neon outlines, tombstone-shaped panels and blinking string lights along the top. A glowing floor-plan minimap sits in the top right of the screen: a cyan dot marks your room, a magenta dot marks a visitor, and a pulsing ring shows where one just arrived. Click a room on the minimap to go there.
+
+All sounds are generated in the browser with the Web Audio API, so there are no audio files and nothing to license:
+
+- a low drone, wind and the odd creak in the background
+- a spooky "whoo" and a chime when a visitor walks in
+- a heartbeat that speeds up the longer a visitor is in your room, and jumps when you scare them
+- a sting plus a gasp or scream when you frighten someone, and a longer scream when they flee
+- a door-slam boom, a click for the lights and a burst of TV static for channel changes
+
+Browsers only allow sound after a click or key press, so audio starts at your first click or key press (Start camera and Start voice both count). The **Mute** button and **Volume** slider are on the TV's bottom edge and are remembered between visits. Sound is paused while the tab is hidden.
+
 ## Command history
 
 Open **Command history** under the room to see every action so far (newest first), with the time and the input that triggered it: hand, voice, head, face, button or keyboard. The last 200 entries are saved in your browser (localStorage) so they survive a reload. **Clear history** wipes them.
@@ -67,6 +81,8 @@ Notes:
 - Head and face sensitivity: the `FACE` object above `detectFace()` (`nod`, `tilt` degrees, `mouth`, `hold` milliseconds)
 - Cooldowns: the millisecond values in `ready('lights', 1200)` and similar
 - Voice words: the patterns in `voiceCmd()`
+- Sounds: each effect is a short function in `audio.js` (`slam()`, `whoo()`, `scream()` and so on); the heartbeat range is in `beat()`
+- Colours: `--cyan`, `--mag` and `--acid` at the top of `style.css`
 - AI voice: the model (`GEMINI_MODEL` environment variable) and the instructions in `SYSTEM` in `server.js`; add a new action by extending `TOOL`, `clean()` and `runPlan()`
 - TV channels: the `CH` array at the top of `script.js`
 - Real smart plug: add a `fetch('YOUR_WEBHOOK_URL')` call inside `slam()` (Home Assistant, IFTTT, Shelly, etc.)
@@ -76,7 +92,8 @@ Notes:
 ```
 index.html   page markup
 style.css    styling
-script.js    hand, voice and head/face detection, plus controls
+script.js    hand, voice and head/face detection, plus controls and the minimap
+audio.js     all sound effects and ambience (Web Audio), plus mute and volume
 room3d.js    3D haunted room (Three.js)
 server.js    optional Node server: serves the site and powers AI voice
 package.json `npm start` runs server.js (no dependencies)

@@ -4,36 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Poltergeist Remote</title>
-<meta name="theme-color" content="#0d0912">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%83%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#050c09">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Creepster&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="lights" id="lights" aria-hidden="true"></div>
 <div class="wrap">
 <header>
 <h1>Poltergeist Remote</h1>
 <p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
 </header>
 <div class="grid">
- <div>
-  <div class="tabs" id="tabs" role="group" aria-label="Rooms"></div>
-  <div class="alert" id="alert" role="alert" hidden><span id="alertText"></span> <button id="alertGo" type="button">Go there</button></div>
-  <div class="room" id="room">
-   <div class="score">Scares: <b id="score">0</b></div>
-   <div class="plug">Smart plug: <b id="plugState">ON</b></div>
-  </div>
-  <p id="log" aria-live="polite">Waiting for a gesture.</p>
-  <details class="history" id="history">
-   <summary>Command history (<span id="histCount">0</span>)</summary>
-   <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>
-   <ol id="histList"></ol>
-   <button id="histClear" type="button">Clear history</button>
-  </details>
- </div>
- <div class="side">
+ <aside class="col l" aria-label="Camera and voice">
   <div class="gcap idle" id="gcap" aria-hidden="true">
    <span class="gi" id="gcapIcon"></span>
    <span class="gt"><b id="gcapName"></b><span class="arrow"> → </span><span id="gcapAct"></span></span>
@@ -51,6 +37,38 @@
    <label><input type="checkbox" id="aiOn" disabled> AI voice <small id="aiNote">(run server.js with an API key to enable)</small></label>
   </div>
   <p id="heard" aria-live="polite">Voice is off.</p>
+ </aside>
+
+ <main class="col c">
+  <div class="tabs" id="tabs" role="group" aria-label="Rooms"></div>
+  <div class="alert" id="alert" role="alert" hidden><span id="alertText"></span> <button id="alertGo" type="button">Go there</button></div>
+  <div class="crt">
+   <div class="room" id="room">
+    <div class="score">Scares: <b id="score">0</b></div>
+    <div class="plug">Smart plug: <b id="plugState">ON</b></div>
+    <svg class="mini" id="mini" viewBox="0 0 120 86" aria-hidden="true">
+     <path class="pass" d="M30 40v6M90 40v6M58 65h4"/>
+     <g class="mr"><rect x="2" y="2" width="116" height="38" rx="3"/><text x="8" y="13">Living room</text>
+      <circle class="ring" cx="60" cy="24" r="7"/><circle class="vd" cx="84" cy="27" r="3"/><circle class="gd" cx="34" cy="27" r="3.4"/></g>
+     <g class="mr"><rect x="2" y="46" width="56" height="38" rx="3"/><text x="8" y="57">Bedroom</text>
+      <circle class="ring" cx="30" cy="69" r="7"/><circle class="vd" cx="42" cy="72" r="3"/><circle class="gd" cx="18" cy="72" r="3.4"/></g>
+     <g class="mr"><rect x="62" y="46" width="56" height="38" rx="3"/><text x="68" y="57">Kitchen</text>
+      <circle class="ring" cx="90" cy="69" r="7"/><circle class="vd" cx="102" cy="72" r="3"/><circle class="gd" cx="78" cy="72" r="3.4"/></g>
+    </svg>
+   </div>
+   <div class="deck">
+    <i class="led" aria-hidden="true"></i>
+    <span id="sndNote">Sound starts at your first click.</span>
+    <button class="knob" id="muteBtn" type="button" aria-pressed="false">Mute</button>
+    <label class="vol">Volume <input type="range" id="vol" min="0" max="100" value="60"></label>
+   </div>
+  </div>
+  <p id="log" aria-live="polite">Waiting for a gesture.</p>
+  <div class="btns">
+   <button id="bL">Lights (L)</button>
+   <button id="bC">Next channel (→)</button>
+   <button id="bD">Door (D)</button>
+  </div>
   <div class="legend">
    <table>
     <caption>Spellbook</caption>
@@ -64,18 +82,23 @@
     </tbody>
    </table>
   </div>
-  <div class="btns">
-   <button id="bL">Lights (L)</button>
-   <button id="bC">Next channel (→)</button>
-   <button id="bD">Door (D)</button>
-  </div>
- </div>
+ </main>
+
+ <aside class="col r" aria-label="Command history">
+  <details class="history" id="history">
+   <summary>Command history (<span id="histCount">0</span>)</summary>
+   <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>
+   <ol id="histList"></ol>
+   <button id="histClear" type="button">Clear history</button>
+  </details>
+ </aside>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="room3d.js"></script>
+<script src="audio.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

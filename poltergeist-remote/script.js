@@ -1,14 +1,11 @@
 const $=id=>document.getElementById(id);
 const logEl=$('log');
+$('lights').innerHTML='<i></i>'.repeat(48); // string lights; the CSS makes them blink
 const CH=["Ch 1<br>Static","Ch 2<br>Haunted Home Makeover","Ch 3<br>Séance Shopping","Ch 4<br>Ghost News at Nine"];
 let ch=0,lightsOn=true,plugOn=true,cool={};
 const ROOMS=['Living room','Bedroom','Kitchen'],RS=ROOMS.map(()=>({lights:true,ch:0}));let cur=0,score=0,alertT=0;
 function log(t){logEl.textContent=t}
 function ready(k,ms){const n=performance.now();if(cool[k]&&n-cool[k]<ms)return false;cool[k]=n;return true}
-function thud(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
- o.frequency.setValueAtTime(110,a.currentTime);o.frequency.exponentialRampToValueAtTime(35,a.currentTime+.25);
- g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.3);
- o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.3)}catch(e){}}
 
 // ---------- Gesture caption ----------
 // Visual feedback above the camera. #log is the aria-live announcement, so the caption is aria-hidden.
@@ -81,9 +78,9 @@ function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
-function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
-function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
-function slam(src){Room.slam();thud();
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
+function slam(src){Room.slam();Sfx.slam();
  plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
 addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
@@ -91,21 +88,24 @@ addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]|
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
 const tabs=$('tabs');
+// Minimap on the TV screen: glowing floor plan, ghost dot in your room, magenta dot where a visitor is.
+const minis=[...document.querySelectorAll('#mini .mr')],here=[false,false,false]; // here[i]: a visitor is in room i
+function sync(){minis.forEach((g,k)=>{g.classList.toggle('here',k===cur);g.classList.toggle('vis',here[k])});Sfx.heart(here[cur])} // heartbeat runs while a visitor is in your room
+function ringMini(i){const g=minis[i];g.classList.remove('ping');void g.getBoundingClientRect();g.classList.add('ping')}
+minis.forEach((g,i)=>{g.onclick=()=>goRoom(i,'button');g.querySelector('.ring').addEventListener('animationend',()=>g.classList.remove('ping'))});
 ROOMS.forEach((n,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+' '+n;b.onclick=()=>goRoom(i,'button');tabs.appendChild(b)});
 function paintTabs(){[...tabs.children].forEach((b,i)=>b.setAttribute('aria-pressed',i===cur))}
 function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;
- Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);paintTabs();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
+ Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);paintTabs();sync();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
 function nextRoom(src){goRoom((cur+1)%ROOMS.length,src)}
-function haunt(n){const r=Room.scare(n);if(!r.hit)return;score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
-function ping(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
- o.frequency.setValueAtTime(660,a.currentTime);o.frequency.setValueAtTime(880,a.currentTime+.12);
- g.gain.setValueAtTime(.25,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.4);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.4)}catch(e){}}
+function haunt(n){const r=Room.scare(n);if(!r.hit)return;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
 function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
 function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
 Room.on=(type,i)=>{const n=ROOMS[i];
- if(type==='arrive'){tabs.children[i].classList.add('has');ping();showAlert(i===cur?'Someone just walked in. Haunt them!':'Someone walked into the '+n+'!',i===cur?null:i)}
- else{tabs.children[i].classList.remove('has');if(type==='leave')showAlert('They left the '+n+' unscared.',null)}};
-paintTabs();
+ if(type==='arrive'){here[i]=true;tabs.children[i].classList.add('has');ringMini(i);Sfx.chime();Sfx.whoo(i===cur);showAlert(i===cur?'Someone just walked in. Haunt them!':'Someone walked into the '+n+'!',i===cur?null:i)}
+ else{here[i]=false;tabs.children[i].classList.remove('has');if(type==='leave')showAlert('They left the '+n+' unscared.',null)}
+ sync()};
+paintTabs();sync();
 
 // Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'slam'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -215,6 +215,7 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,voiceOn=false;
 function setVoice(on){voiceOn=on;const b=$('voiceBtn');b.textContent=on?'Stop voice':'Start voice';b.setAttribute('aria-pressed',on)}
 $('voiceBtn').onclick=()=>{
+ Sfx.start();
  const heard=$('heard');
  if(voiceOn){setVoice(false);rec&&rec.stop();heard.textContent='Voice is off.';return}
  if(!SR){heard.textContent='Voice needs Chrome or Edge. Use hand, head, buttons or keys instead.';return}
@@ -238,11 +239,12 @@ $('voiceBtn').onclick=()=>{
 let handLm=null,faceLm=null;
 function dot(ctx,p,r){ctx.beginPath();ctx.arc(p.x*640,p.y*480,r,0,7);ctx.fill()}
 function render(){const ctx=$('c').getContext('2d');ctx.clearRect(0,0,640,480);
- if(handLm){ctx.fillStyle='#7df3c6';handLm.forEach(p=>dot(ctx,p,4))}
- if(faceLm){ctx.fillStyle='#ffd98a';[1,33,263,13,14,61,291,10,152].forEach(i=>dot(ctx,faceLm[i],3))}
+ if(handLm){ctx.fillStyle='#19f0ff';handLm.forEach(p=>dot(ctx,p,4))}
+ if(faceLm){ctx.fillStyle='#ff2bd6';[1,33,263,13,14,61,291,10,152].forEach(i=>dot(ctx,faceLm[i],3))}
  $('camMsg').textContent=handLm||faceLm?[handLm?'Hand detected':'',faceLm?'Face detected':''].filter(Boolean).join(' · ')+'.':'Show a hand or your face to the camera.'}
 
 $('startBtn').onclick=async()=>{
+ Sfx.start();
  const msg=$('camMsg');msg.textContent='Starting camera…';
  try{
   const v=$('v');v.srcObject=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});await v.play();
