@@ -179,6 +179,38 @@ function voiceCmd(t){
  if(m=t.match(/\b(channel|next)\b/)){if(ready('channel',900)){said();channel(1,'voice')}return true}
  return false;
 }
+// ---------- Free-form voice (needs server.js + ANTHROPIC_API_KEY) ----------
+// With AI voice on, finished phrases that the keywords don't catch (or that are 4+ words) go to /api/interpret.
+// Claude returns a short list of actions, e.g. "set the mood for a scary movie night" -> lights off, channel, door.
+const aiOn=()=>$('aiOn').checked&&!$('aiOn').disabled;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let planId=0;
+fetch('/api/status').then(r=>r.ok?r.json():null).then(j=>{
+ if(!j||!j.ai)return;const c=$('aiOn');c.disabled=false;c.checked=true;
+ $('aiNote').textContent='(sends what you say to Claude)';$('aiRow').hidden=false}).catch(()=>{});
+function setLights(on,src){if(lightsOn!==on)lights(src)}
+function setChannel(n,src){if(n-1!==ch)channel(n-1-ch,src)}
+async function runPlan(actions,src){
+ const id=++planId; // a newer spoken plan cancels an older one that is still running
+ for(const a of actions){
+  if(id!==planId)return;
+  if(a.type==='wait'){await sleep(a.seconds*1000);continue}
+  if(a.type==='lights')setLights(a.on,src);
+  else if(a.type==='channel')setChannel(a.channel,src);
+  else if(a.type==='door')slam(src);
+  else if(a.type==='room')goRoom(a.room-1,src);
+  await sleep(400)}}
+async function aiCommand(t){
+ const heard=$('heard');heard.textContent='Thinking: "'+t+'"';
+ try{
+  const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({text:t,state:{room:cur+1,lights:lightsOn,channel:ch+1}})});
+  if(!r.ok)throw new Error('http '+r.status);
+  const p=await r.json();
+  if(!Array.isArray(p.actions)||!p.actions.length){heard.textContent=p.message?'Ghost: '+p.message:'Heard: '+t+' (not a room command)';return}
+  heard.textContent='Ghost: '+(p.message||'On it.');runPlan(p.actions,'voice AI')
+ }catch(e){heard.textContent='AI unavailable, trying keywords. Heard: '+t;voiceCmd(t)}}
+
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,voiceOn=false;
 function setVoice(on){voiceOn=on;const b=$('voiceBtn');b.textContent=on?'Stop voice':'Start voice';b.setAttribute('aria-pressed',on)}
@@ -188,10 +220,15 @@ $('voiceBtn').onclick=()=>{
  if(!SR){heard.textContent='Voice needs Chrome or Edge. Use hand, head, buttons or keys instead.';return}
  rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
  let done={};
- rec.onstart=()=>{done={};heard.textContent='Listening… say Lights, Channel or Slam.'};
+ rec.onstart=()=>{done={};heard.textContent=aiOn()?'Listening… try "set the mood for a scary movie night".':'Listening… say Lights, Channel or Slam.'};
  rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){
-  if(done[i])continue;const t=e.results[i][0].transcript.trim();
-  heard.textContent='Heard: '+t;if(voiceCmd(t))done[i]=true}};
+  if(done[i])continue;const r=e.results[i],t=r[0].transcript.trim();
+  heard.textContent='Heard: '+t;
+  if(aiOn()){ // free-form mode: act on finished phrases only, so half-spoken sentences aren't misread
+   if(!r.isFinal)continue;done[i]=true;
+   if(t.split(/\s+/).length<4&&voiceCmd(t))continue;
+   aiCommand(t);continue}
+  if(voiceCmd(t))done[i]=true}};
  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){setVoice(false);heard.textContent='Microphone blocked. Allow it in the browser, or use the other inputs.'}};
  rec.onend=()=>{if(voiceOn){try{rec.start()}catch(e){}}};
  setVoice(true);try{rec.start()}catch(e){}

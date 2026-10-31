@@ -48,6 +48,7 @@
   <div class="inputs">
    <button id="voiceBtn" aria-pressed="false">Start voice</button>
    <label><input type="checkbox" id="faceOn" checked> Head &amp; face tracking</label>
+   <label><input type="checkbox" id="aiOn" disabled> AI voice <small id="aiNote">(run server.js with an API key to enable)</small></label>
   </div>
   <p id="heard" aria-live="polite">Voice is off.</p>
   <div class="legend">
@@ -59,6 +60,7 @@
      <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
      <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
+     <tr id="aiRow" hidden><th scope="row">Anything else (AI)</th><td>&ndash;</td><td>"Set the mood for a scary movie night"</td><td>&ndash;</td></tr>
     </tbody>
    </table>
   </div>
