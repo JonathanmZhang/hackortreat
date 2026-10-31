@@ -1,7 +1,5 @@
 # Poltergeist Remote
 
-**Live demo:** https://jonathanmzhang.github.io/hackortreat/poltergeist-remote/ (served over HTTPS, so camera and microphone work after you allow access)
-
 A Halloween hackathon project: a ghost can't touch a light switch, so everything is controlled without touching anything: hand gestures, your voice, or head and face movements. Built with plain HTML, CSS, JavaScript, [Three.js](https://threejs.org) for the 3D room, [MediaPipe](https://developers.google.com/mediapipe) (Hands and Face Mesh) and the browser's Web Speech API. No build step, no backend.
 
 ## Controls
@@ -15,6 +13,12 @@ A Halloween hackathon project: a ghost can't touch a light switch, so everything
 Keyboard fallbacks: `L` lights, `←` `→` channel, `D` door.
 
 All inputs share one cooldown per action, so a nod plus a spoken "Lights" at the same moment only flicks the lights once.
+
+## Rooms and visitors
+
+There are three rooms: living room, bedroom and kitchen. Every so often a visitor walks in through the door of a random room, an alert pops up with a **Go there** button and a red dot appears on that room's tab. Switch rooms and haunt them: flicking the lights or changing the channel adds a little fear, slamming the door scares them off at once. Points: +10 per fright, +60 when a visitor flees. Visitors who aren't scared leave on their own after about 30 seconds.
+
+Switch rooms with the tabs, keys `1` `2` `3`, a **peace sign** (index and middle finger up) or by saying "living room", "bedroom" or "kitchen". Each room remembers its own lights and TV channel.
 
 ## Command history
 

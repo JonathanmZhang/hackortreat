@@ -2,6 +2,7 @@ const $=id=>document.getElementById(id);
 const logEl=$('log');
 const CH=["Ch 1<br>Static","Ch 2<br>Haunted Home Makeover","Ch 3<br>Séance Shopping","Ch 4<br>Ghost News at Nine"];
 let ch=0,lightsOn=true,plugOn=true,cool={};
+const ROOMS=['Living room','Bedroom','Kitchen'],RS=ROOMS.map(()=>({lights:true,ch:0}));let cur=0,score=0,alertT=0;
 function log(t){logEl.textContent=t}
 function ready(k,ms){const n=performance.now();if(cool[k]&&n-cool[k]<ms)return false;cool[k]=n;return true}
 function thud(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
@@ -30,12 +31,31 @@ function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
-function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);act('Lights '+(lightsOn?'on':'off'),src)}
-function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1],src)}
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
 function slam(src){Room.slam();thud();
- plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered',src)}
+ plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
-addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard')});
+addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard')});
+
+// ---------- Rooms and visitors ----------
+// Visitors wander into a random room every so often. Be in their room when you act and they get scared.
+const tabs=$('tabs');
+ROOMS.forEach((n,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+' '+n;b.onclick=()=>goRoom(i,'button');tabs.appendChild(b)});
+function paintTabs(){[...tabs.children].forEach((b,i)=>b.setAttribute('aria-pressed',i===cur))}
+function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;
+ Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);paintTabs();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
+function nextRoom(src){goRoom((cur+1)%ROOMS.length,src)}
+function haunt(n){const r=Room.scare(n);if(!r.hit)return;score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
+function ping(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
+ o.frequency.setValueAtTime(660,a.currentTime);o.frequency.setValueAtTime(880,a.currentTime+.12);
+ g.gain.setValueAtTime(.25,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.4);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.4)}catch(e){}}
+function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
+function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
+Room.on=(type,i)=>{const n=ROOMS[i];
+ if(type==='arrive'){tabs.children[i].classList.add('has');ping();showAlert(i===cur?'Someone just walked in. Haunt them!':'Someone walked into the '+n+'!',i===cur?null:i)}
+ else{tabs.children[i].classList.remove('has');if(type==='leave')showAlert('They left the '+n+' unscared.',null)}};
+paintTabs();
 
 // Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'slam'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -48,6 +68,8 @@ function detect(lm){
  const curled=[[8,6],[12,10],[16,14],[20,18]].every(([t,p])=>dist(lm[t],lm[0])<dist(lm[p],lm[0]));
  const now=performance.now(),x=1-lm[0].x;
  hist.push({t:now,x});while(hist.length&&now-hist[0].t>350)hist.shift();
+ const ext=(t,p)=>dist(lm[t],lm[0])>dist(lm[p],lm[0]);
+ if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500))nextRoom('hand');return}
  if(pinch){if(ready('lights',1200))lights('hand');return}
  if(curled){if(ready('slam',1500))slam('hand');return}
  if(hist.length>3){const dx=x-hist[0].x;
@@ -86,6 +108,9 @@ function detectFace(lm){
 // Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
 function voiceCmd(t){
  t=t.toLowerCase();
+ if(/\bliving\b/.test(t)){goRoom(0,'voice');return true}
+ if(/\bbed(room)?\b/.test(t)){goRoom(1,'voice');return true}
+ if(/\bkitchen\b/.test(t)){goRoom(2,'voice');return true}
  if(/\b(slam|slammed|slams|door)\b/.test(t)){if(ready('slam',1500))slam('voice');return true}
  if(/\b(lights?|flick)\b/.test(t)){if(ready('lights',1200))lights('voice');return true}
  if(/\b(previous|back)\b/.test(t)){if(ready('channel',900))channel(-1,'voice');return true}

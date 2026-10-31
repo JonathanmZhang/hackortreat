@@ -15,11 +15,14 @@
 <div class="wrap">
 <header>
 <h1>Poltergeist Remote</h1>
-<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control.</p>
+<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
 </header>
 <div class="grid">
  <div>
+  <div class="tabs" id="tabs" role="group" aria-label="Rooms"></div>
+  <div class="alert" id="alert" role="alert" hidden><span id="alertText"></span> <button id="alertGo" type="button">Go there</button></div>
   <div class="room" id="room">
+   <div class="score">Scares: <b id="score">0</b></div>
    <div class="plug">Smart plug: <b id="plugState">ON</b></div>
   </div>
   <p id="log" aria-live="polite">Waiting for a gesture.</p>
@@ -50,6 +53,7 @@
      <tr><th scope="row">Flick the lights</th><td>Pinch</td><td>"Lights"</td><td>Nod</td></tr>
      <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
+     <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
     </tbody>
    </table>
   </div>

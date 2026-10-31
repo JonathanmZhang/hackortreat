@@ -4,7 +4,7 @@ const host=document.getElementById('room');
 let R;
 try{R=new THREE.WebGLRenderer({antialias:true})}catch(e){
  host.insertAdjacentHTML('beforeend','<p style="padding:16px;color:#9a8fb0">3D view needs WebGL. Gestures still work.</p>');
- window.Room={lights(){},tv(){},slam(){},ghost(){}};return}
+ window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},scare(){return{hit:false}}};return}
 const W=()=>host.clientWidth||640,H=()=>host.clientHeight||400;
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(W(),H(),false);
 R.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
@@ -26,10 +26,11 @@ PL(0x8fa8ff,.9,14,-2.6,3.1,-1.5); // moonlight
 const pc=document.createElement('canvas');pc.width=pc.height=256;const px=pc.getContext('2d');
 for(let i=0;i<8;i++){px.fillStyle=i%2?'#4a362b':'#3e2d24';px.fillRect(0,i*32,256,32);px.fillStyle='#2a1c15';px.fillRect(0,i*32,256,2)}
 const pt=new THREE.CanvasTexture(pc);pt.wrapS=pt.wrapT=THREE.RepeatWrapping;pt.repeat.set(2,2);
-add(bx(10,.2,8),M(0xffffff,{map:pt}),0,-.1,1);
-add(bx(10,5,.2),M(0x4a3a6e),0,2.5,-3.1);
-add(bx(.2,5,8),M(0x3f3262),-5.1,2.5,1);
-add(bx(.2,5,8),M(0x3f3262),5.1,2.5,1);
+const floorM=M(0xffffff,{map:pt}),wallM=M(0x4a3a6e),sideM=M(0x3f3262);
+add(bx(10,.2,8),floorM,0,-.1,1);
+add(bx(10,5,.2),wallM,0,2.5,-3.1);
+add(bx(.2,5,8),sideM,-5.1,2.5,1);
+add(bx(.2,5,8),sideM,5.1,2.5,1);
 
 // window with moon
 const fr=M(0x120b1c);
@@ -146,6 +147,54 @@ add(new THREE.SphereGeometry(.45,16,12),gM,0,.45,0,gh);
 gh.position.set(1.6,3.3,.5);
 const gt={x:1.6,y:3.3};let lastHand=-9999;
 
+// rooms: same layout, recoloured, with different furniture
+const RM=[[0x4a3a6e,0x3f3262,0xffffff],[0x3a4a7a,0x2f3a62,0xb8c8ff],[0x2f6a5a,0x265446,0xc8d8c8]];
+const ex=[0,1,2].map(()=>{const g=new THREE.Group();S.add(g);return g});
+const sf=M(0x7a2f3f);
+add(bx(2.6,.5,1),sf,0,.25,.9,ex[0]);add(bx(2.6,.8,.3),sf,0,.7,1.3,ex[0]);add(bx(.3,.7,1),sf,-1.3,.45,.9,ex[0]);add(bx(.3,.7,1),sf,1.3,.45,.9,ex[0]);
+add(bx(2.4,.35,2.8),M(0x3a2a22),0,.18,.3,ex[1]);add(bx(2.2,.3,2.6),M(0xdad4e8),0,.5,.3,ex[1]);add(bx(1,.15,.5),M(0xffffff),0,.7,-.8,ex[1]);add(bx(2.2,.12,1.5),M(0x5a2a6e),0,.66,.6,ex[1]);add(bx(2.4,1,.15),M(0x3a2a22),0,.8,-1.15,ex[1]);
+add(bx(1.1,2.6,1),M(0xd8e0e8),-4.2,1.3,-2.3,ex[2]);add(bx(.06,.8,.08),M(0x555566),-3.8,1.5,-1.77,ex[2]);add(bx(2,.12,1.2),M(0x6b4a33),0,.85,.9,ex[2]);add(new THREE.CylinderGeometry(.12,.12,.85,10),M(0x6b4a33),0,.42,.9,ex[2]);
+
+// visitors: people wander in through the door, one per room at a time
+let cur=0;
+const vis=[{m:null},{m:null},{m:null}],DOORP=new THREE.Vector3(3.05,0,-2.3);
+function person(){
+ const g=new THREE.Group(),c=[0x3b7dd8,0xd84a4a,0x4aa86a,0xd8a83b,0x8a5ad8][Math.random()*5|0];
+ add(new THREE.CylinderGeometry(.22,.28,.8,12),M(c),0,1,0,g);
+ add(new THREE.SphereGeometry(.2,12,10),M(0xf1c9a5),0,1.62,0,g);
+ const l1=add(bx(.14,.6,.14),M(0x2a2a3a),-.12,.3,0,g),l2=add(bx(.14,.6,.14),M(0x2a2a3a),.12,.3,0,g);
+ const bc=document.createElement('canvas');bc.width=128;bc.height=48;
+ const bt=new THREE.CanvasTexture(bc),bub=new THREE.Sprite(new THREE.SpriteMaterial({map:bt,transparent:true}));
+ bub.scale.set(1.3,.5,1);bub.position.y=2.3;bub.visible=false;g.add(bub);
+ g.userData={l1,l2,bub,bc,bt};S.add(g);return g}
+function say(v,t){const u=v.m.userData,x=u.bc.getContext('2d');x.clearRect(0,0,128,48);x.fillStyle='#fff';x.fillRect(0,0,128,40);
+ x.fillStyle='#000';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText(t,64,28);u.bt.needsUpdate=true;u.bub.visible=true;v.say=performance.now()+1300}
+function setWP(v){v.wp=new THREE.Vector3(-2.4+Math.random()*4.8,0,-.2+Math.random()*2.6)}
+function spawn(i){
+ if(vis[i].m)return;const m=person();m.position.copy(DOORP);m.visible=(i===cur);
+ vis[i]={m,state:'walk',fear:0,vy:0,say:0,until:performance.now()+22000+Math.random()*10000};setWP(vis[i]);
+ window.Room.on&&window.Room.on('arrive',i)}
+function removeV(i,type){S.remove(vis[i].m);vis[i]={m:null};window.Room.on&&window.Room.on(type,i)}
+function visitors(t){
+ const now=performance.now();
+ vis.forEach((v,i)=>{if(!v.m)return;const m=v.m,u=m.userData;
+  if(v.state==='walk'&&now>v.until)v.state='out';
+  const leaving=v.state!=='walk',tgt=leaving?DOORP:v.wp,spd=v.state==='flee'?.09:.025;
+  const dx=tgt.x-m.position.x,dz=tgt.z-m.position.z,d=Math.hypot(dx,dz);
+  if(d<.15){if(leaving){removeV(i,v.state==='flee'?'fled':'leave');return}setWP(v)}
+  else{m.position.x+=dx/d*spd;m.position.z+=dz/d*spd;m.rotation.y=Math.atan2(dx,dz)}
+  v.vy-=.012;m.position.y=Math.max(0,m.position.y+v.vy);if(m.position.y===0)v.vy=0;
+  const w=Math.sin(t*(v.state==='flee'?18:8))*.5;u.l1.rotation.x=w;u.l2.rotation.x=-w;
+  if(u.bub.visible&&now>v.say)u.bub.visible=false})}
+function scare(n){
+ const v=vis[cur];if(!v.m||v.state!=='walk')return{hit:false};
+ v.fear+=n;v.vy=.1;const fled=v.fear>=3;say(v,fled?'NOPE!':'Aah!');if(fled)v.state='flee';return{hit:true,fled}}
+function setRoom(i){cur=i;const r=RM[i];wallM.color.setHex(r[0]);sideM.color.setHex(r[1]);floorM.color.setHex(r[2]);
+ ex.forEach((g,k)=>g.visible=k===i);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3}
+setRoom(0);
+function sched(){setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(free.length)spawn(free[Math.random()*free.length|0]);sched()},9000+Math.random()*14000)}
+setTimeout(()=>spawn(1+(Math.random()*2|0)),5000);sched();
+
 // loop
 const clock=new THREE.Clock();let mx=0,my=0;
 host.addEventListener('pointermove',e=>{const r=host.getBoundingClientRect();mx=(e.clientX-r.left)/r.width-.5;my=(e.clientY-r.top)/r.height-.5});
@@ -163,6 +212,7 @@ function loop(){
  if(performance.now()-lastHand>1500){gt.x=1.6+Math.sin(t*.4)*1.2;gt.y=3.3}
  const px0=gh.position.x;gh.position.x+=(gt.x-gh.position.x)*.08;gh.position.y+=(gt.y+Math.sin(t*2)*.12-gh.position.y)*.08;
  gh.rotation.z=-(gt.x-px0)*.15;
+ visitors(t);
  C.position.set(mx*1.4+(Math.random()-.5)*shake*.15,2.7-my*.5+(Math.random()-.5)*shake*.15,6.4);shake*=.9;
  C.lookAt(0,2.1,-1);R.render(S,C)}
 loop();
@@ -170,6 +220,7 @@ loop();
 new ResizeObserver(()=>{R.setSize(W(),H(),false);C.aspect=W()/H();C.updateProjectionMatrix()}).observe(host);
 
 window.Room={
+ setRoom,scare,
  lights(on){amb.intensity=on?.7:.12;lampL.intensity=on?1.4:0;shadeM.emissiveIntensity=on?.9:0;gM.emissiveIntensity=on?.3:.9},
  tv(text){tvT=text.split('<br>');drawTV()},
  slam(){dk=0;dkK=.4;shake=.6;setTimeout(()=>{dk=-1.15;dkK=.05},1400)},
