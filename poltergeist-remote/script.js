@@ -289,6 +289,9 @@ fetch('/api/status').then(r=>r.ok?r.json():null).then(j=>{
  $('aiNote').textContent='(sends what you say to Gemini)';$('aiRow').hidden=false}).catch(()=>{});
 function setLights(on,src){if(lightsOn!==on)lights(src)}
 function setChannel(n,src){if(n-1!==ch)channel(n-1-ch,src)}
+function musicOp(op,src){
+ if(op==='next')trackStep(1,src);else if(op==='previous')trackStep(-1,src);
+ else if(op==='spooky')spooky(src);else playPause(op==='play',src)}
 async function runPlan(actions,src){
  const id=++planId; // a newer spoken plan cancels an older one that is still running
  for(const a of actions){
@@ -298,12 +301,13 @@ async function runPlan(actions,src){
   else if(a.type==='channel')setChannel(a.channel,src);
   else if(a.type==='door')slam(src);
   else if(a.type==='room')goRoom(a.room-1,src);
+  else if(a.type==='music')musicOp(a.op,src);
   await sleep(400)}}
 async function aiCommand(t){
  const heard=$('heard');heard.textContent='Thinking: "'+t+'"';
  try{
-  const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({text:t,state:{room:cur+1,lights:lightsOn,channel:ch+1}})});
+  const mu=Spotify.state(),r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({text:t,state:{room:cur+1,lights:lightsOn,channel:ch+1,music:{connected:mu.connected,playing:mu.playing,track:mu.track}}})});
   if(!r.ok)throw new Error('http '+r.status);
   const p=await r.json();
   if(!Array.isArray(p.actions)||!p.actions.length){heard.textContent=p.message?'Ghost: '+p.message:'Heard: '+t+' (not a room command)';return}
