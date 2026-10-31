@@ -18,7 +18,10 @@ const GESTURES={
  tiltL:{icon:'🙃',name:'Tilt head left',action:'Previous channel'},
  tiltR:{icon:'🙃',name:'Tilt head right',action:'Next channel'},
  mouth:{icon:'😮',name:'Open mouth',action:'Slam the door'},
- peace:{icon:'✌️',name:'Peace sign',action:'Next room'}};
+ peace:{icon:'✌️',name:'Peace sign',action:'Next room'},
+ horns:{icon:'🤘',name:'Horns',action:'Switch TV / Jukebox'},
+ palm:{icon:'✋',name:'Open palm',action:'Play / pause music'},
+ brows:{icon:'🤨',name:'Raise eyebrows',action:'Switch TV / Jukebox'}};
 const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️'};
 const CAP={frames:3,linger:400,fired:1200};
 // capVia names what triggered the next act(): a GESTURES key, a spoken word or a key label.
@@ -107,13 +110,28 @@ function trackStep(d,src){
  return true}
 function next(src){return focus==='jukebox'?trackStep(1,src):tvStep(1,src)}
 function previous(src){return focus==='jukebox'?trackStep(-1,src):tvStep(-1,src)}
+// Play and pause work whatever has focus. want: true, false or undefined to toggle. uri: a playlist to start.
+function playPause(want,src,uri){
+ if(!Spotify.connected()){capVia=null;log(Spotify.ready()?'Connect Spotify first.':"Spotify isn't set up yet.");return false}
+ if(!ready('play',1500))return false;
+ const via=capVia,playing=Spotify.state().playing,will=uri?true:want===undefined?!playing:want;capVia=null;
+ if(!uri&&will===playing){log('The music is already '+(will?'playing':'paused')+'.');return true}
+ (will?Spotify.play(uri):Spotify.togglePlay()).then(ok=>{
+  if(!ok){log(Spotify.state().msg||'Spotify could not do that.');return}
+  capVia=via;act(uri?'Spooky music playing':will?'Music playing':'Music paused',src);haunt(1)});
+ return true}
+const spooky=src=>playPause(true,src,HAUNT_PLAYLIST||undefined);
 // Polling can end a login, and that must not leave focus on a jukebox nobody can reach.
 Spotify.onChange(s=>{if(focus==='jukebox'&&!s.connected){focus='tv';paintFocus();log('Spotify is disconnected. The ghost is back on the TV.')}});
 paintFocus();
 
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>next('button');$('bD').onclick=()=>slam('button');
-$('jPrev').onclick=()=>trackStep(-1,'button');$('jNext').onclick=()=>trackStep(1,'button');
-addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')next('keyboard');if(e.key==='ArrowLeft')previous('keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+$('jPrev').onclick=()=>trackStep(-1,'button');$('jNext').onclick=()=>trackStep(1,'button');$('jPlay').onclick=()=>playPause(undefined,'button');
+addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←',' ':'Space'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')next('keyboard');if(e.key==='ArrowLeft')previous('keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');
+ if((e.key==='m'||e.key==='M')&&!e.ctrlKey&&!e.metaKey)switchFocus('toggle','keyboard');
+ // Space keeps its normal job on focused controls, and keeps scrolling the page until Spotify is set up.
+ if(e.key===' '&&Spotify.ready()&&!(e.target.closest&&e.target.closest('button,input,summary'))){e.preventDefault();if(!e.repeat)playPause(undefined,'keyboard')}
+ capVia=null});
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -140,8 +158,13 @@ paintTabs();sync();
 // Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'track', 'slam', 'room', 'focus', 'play'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
+// A pose that must be held. Fires once per hold (done) and forgives a dropped frame or two of tracking.
+function held(h,on,now){if(!on)return -1;if(!h.since||now-h.seen>HOLD.grace){h.since=now;h.done=false}h.seen=now;return now-h.since}
+
 // ---------- Hand gestures ----------
-const hist=[];
+// Hold times (ms), how far the wrist may drift during an open-palm hold (fraction of the frame), dropped-frame grace (ms).
+const HOLD={horns:400,palm:1000,palmMove:.04,grace:150};
+const hist=[],hornH={since:0,seen:0,done:false},palmH={since:0,seen:0,done:false,at:null};
 function detect(lm){
  const scale=dist(lm[0],lm[9])||.1;
  const pinch=dist(lm[4],lm[8])/scale<0.28;
@@ -149,21 +172,40 @@ function detect(lm){
  const now=performance.now(),x=1-lm[0].x;
  hist.push({t:now,x});while(hist.length&&now-hist[0].t>350)hist.shift();
  const ext=(t,p)=>dist(lm[t],lm[0])>dist(lm[p],lm[0]);
+ // Horns: index and pinky up, middle and ring curled. The middle finger keeps it apart from a peace sign. A pinch stays a pinch.
+ const hE=held(hornH,!pinch&&ext(8,6)&&ext(20,18)&&!ext(12,10)&&!ext(16,14),now);
+ if(hE>=0){
+  if(hornH.done)setCaption('horns','cooldown',now-cool.focus<1500?'':'release to repeat');
+  else if(hE>=HOLD.horns){hornH.done=true;capVia='horns';if(!switchFocus('toggle','hand')){capVia=null;setCaption('horns','cooldown')}}
+  else setCaption('horns','detecting',hE,HOLD.horns);
+  return}
  if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500)){capVia='peace';nextRoom('hand')}else setCaption('peace','cooldown');return}
  if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
  if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
+ // Open palm held still -> play/pause. People swipe with an open hand, so any wrist movement restarts the hold, and it can't return here.
+ // Until Spotify is set up, a resting open hand does nothing at all.
+ let pE=held(palmH,!pinch&&ext(8,6)&&ext(12,10)&&ext(16,14)&&ext(20,18),now);
+ if(pE>=0&&palmH.done){if(Spotify.connected())setCaption('palm','cooldown',now-cool.play<1500?'':'lower your hand to repeat')}
+ else if(pE>=0){
+  if(pE===0||dist(lm[0],palmH.at)>HOLD.palmMove){palmH.at=lm[0];palmH.since=now;pE=0}
+  if(pE>=HOLD.palm){palmH.done=true;
+   if(Spotify.ready()){capVia='palm';if(!playPause(undefined,'hand')&&Spotify.connected()){capVia=null;setCaption('palm','cooldown')}}}
+  else if(Spotify.ready()&&pE>HOLD.palm*.15)setCaption('palm','detecting',pE,HOLD.palm)}
  if(hist.length>3){const dx=x-hist[0].x;
-  if(Math.abs(dx)>0.28){capVia=dx>0?'swipeR':'swipeL';if((dx>0?next:previous)('hand'))hist.length=0;else capVia=null}}
+  if(Math.abs(dx)>0.28){capVia=dx>0?'swipeR':'swipeL';if((dx>0?next:previous)('hand')){hist.length=0;palmH.since=0;palmH.done=false}else capVia=null}}
 }
 
 // ---------- Head & face (MediaPipe Face Mesh) ----------
 // Tune these if it triggers too easily or not at all.
-const FACE={nod:0.09,tilt:18,mouth:0.12,hold:350};
-const pitchHist=[];let tiltArmed=true,tiltSince=0,mouthSince=0;
+// brow: how far above this face's neutral the eyebrows must rise, as a fraction of face height. browFrames: neutral frames to average.
+const FACE={nod:0.09,tilt:18,mouth:0.12,hold:350,brow:0.02,browFrames:30};
+const pitchHist=[],browH={since:0,seen:0,done:false};let tiltArmed=true,tiltSince=0,mouthSince=0,browN=0,browBase=0,browP=0,browSeen=0;
 function detectFace(lm){
- const now=performance.now(),faceH=dist(lm[10],lm[152])||.1;
+ const now=performance.now(),faceH=dist(lm[10],lm[152])||.1,mouthOpen=dist(lm[13],lm[14])/faceH>FACE.mouth;
+ if(now-browSeen>2000)browN=0; // a new face (or none for a while): calibrate again
+ browSeen=now;
  // Open mouth (hold briefly) -> slam the door
- if(dist(lm[13],lm[14])/faceH>FACE.mouth){
+ if(mouthOpen){
   mouthSince=mouthSince||now;
   if(now-mouthSince>FACE.hold){if(ready('slam',1500)){capVia='mouth';slam('face');pitchHist.length=0}else setCaption('mouth','cooldown')}
   else setCaption('mouth','detecting',now-mouthSince);
@@ -183,14 +225,24 @@ function detectFace(lm){
  // Nod (down and back up) -> flick the lights
  const eyeY=(lm[33].y+lm[263].y)/2,pitch=(lm[1].y-eyeY)/((lm[152].y-eyeY)||.1);
  pitchHist.push({t:now,p:pitch});while(pitchHist.length&&now-pitchHist[0].t>900)pitchHist.shift();
+ let nodRange=0;
  if(pitchHist.length>6){
-  const ps=pitchHist.map(h=>h.p),hi=Math.max(...ps),lo=Math.min(...ps),range=hi-lo;
+  const ps=pitchHist.map(h=>h.p),hi=Math.max(...ps),lo=Math.min(...ps),range=hi-lo;nodRange=range;
   if(range>FACE.nod){
    if(Math.abs(pitch-ps[0])>=range*.4)setCaption('nod','detecting');
    else if(ready('lights',1200)){capVia='nod';lights('head');pitchHist.length=0}
    else setCaption('nod','cooldown');
   }
  }
+ // Raised eyebrows (hold briefly) -> switch TV / jukebox, measured against this face's own neutral brow height and head pitch.
+ // Only counts on a still, level head with the mouth shut, so a nod, tilt or open mouth can't fire it. A tilt already returned above.
+ const brow=(dist(lm[105],lm[159])+dist(lm[334],lm[386]))/2/faceH,calm=!mouthOpen&&Math.abs(roll)<10&&nodRange<FACE.nod*.5&&!(now-cool.lights<600);
+ if(browN<FACE.browFrames){if(calm){browBase=browN?browBase+(brow-browBase)/(browN+1):brow;browP=browN?browP+(pitch-browP)/(browN+1):pitch;browN++}return}
+ const bE=held(browH,calm&&brow-browBase>FACE.brow&&Math.abs(pitch-browP)<FACE.nod*.5,now);
+ if(bE<0){if(calm){browBase+=(brow-browBase)*.002;browP+=(pitch-browP)*.002}return} // follows slow changes in posture
+ if(browH.done)setCaption('brows','cooldown',now-cool.focus<1500?'':'lower your eyebrows to repeat');
+ else if(bE>=FACE.hold){browH.done=true;capVia='brows';if(!switchFocus('toggle','face')){capVia=null;setCaption('brows','cooldown')}}
+ else setCaption('brows','detecting',bE,FACE.hold);
 }
 
 // ---------- Voice (Web Speech API; Chrome / Edge) ----------
@@ -211,6 +263,10 @@ function voiceCmd(t){
  if(m=t.match(/\bprevious\s+(song|track)\b/))return run(()=>trackStep(-1,'voice'));
  if(m=t.match(/\bprevious\s+channel\b/))return run(()=>tvStep(-1,'voice'));
  if(m=t.match(/\b(next\s+channel|channel)\b/))return run(()=>tvStep(1,'voice'));
+ // Play and pause. \b keeps "playlist" from matching.
+ if(m=t.match(/\b(spooky\s+music|play\s+(some\s+)?music)\b/))return run(()=>spooky('voice'));
+ if(m=t.match(/\b(music\s+off|off\s+the\s+music|pause|stop)\b/))return run(()=>playPause(false,'voice'));
+ if(m=t.match(/\b(music\s+on|on\s+the\s+music|play)\b/))return run(()=>playPause(true,'voice'));
  // Switch focus.
  if(m=t.match(/\b(t\.?v\.?|television)(?!\w)/))return run(()=>switchFocus('tv','voice'));
  if(m=t.match(/\b(music|jukebox)\b/))return run(()=>switchFocus('jukebox','voice'));
