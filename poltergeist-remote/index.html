@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poltergeist Remote</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>Poltergeist Remote</h1>
+<p>A ghost can't touch a light switch. Wave a hand at your webcam and the room obeys: no contact, no reaching, no fine motor control.</p>
+</header>
+<div class="grid">
+ <div>
+  <div class="room on" id="room">
+   <div class="floor"></div>
+   <div class="lamp"><b></b><i></i></div>
+   <div class="tv" id="tv"><span>Ch 1<br>Static</span></div>
+   <div class="door shut" id="door"><div></div></div>
+   <div class="plug">Smart plug: <b id="plugState">ON</b></div>
+   <div class="dark"></div>
+  </div>
+  <p id="log" aria-live="polite">Waiting for a gesture.</p>
+ </div>
+ <div class="side">
+  <div class="cam">
+   <video id="v" playsinline muted></video>
+   <canvas id="c" width="640" height="480"></canvas>
+   <div class="msg" id="camMsg">Camera is off. Start it, or use the buttons below.</div>
+  </div>
+  <button class="start" id="startBtn">Start camera</button>
+  <dl class="legend">
+   <dt>Pinch</dt><dd>Flick the lights</dd>
+   <dt>Swipe</dt><dd>Change the TV channel</dd>
+   <dt>Fist</dt><dd>Slam the door</dd>
+  </dl>
+  <div class="btns">
+   <button id="bL">Lights (L)</button>
+   <button id="bC">Next channel (→)</button>
+   <button id="bD">Door (D)</button>
+  </div>
+ </div>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
