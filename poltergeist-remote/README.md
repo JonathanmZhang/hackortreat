@@ -1,5 +1,7 @@
 # Poltergeist Remote
 
+**Live demo:** https://jonathanmzhang.github.io/hackortreat/poltergeist-remote/ (served over HTTPS, so camera and microphone work after you allow access)
+
 A Halloween hackathon project: a ghost can't touch a light switch, so everything is controlled without touching anything: hand gestures, your voice, or head and face movements. Built with plain HTML, CSS, JavaScript, [Three.js](https://threejs.org) for the 3D room, [MediaPipe](https://developers.google.com/mediapipe) (Hands and Face Mesh) and the browser's Web Speech API. No build step, no backend.
 
 ## Controls
