@@ -35,9 +35,16 @@ button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid va
 button:hover{border-color:var(--ecto)}
 button:focus-visible{outline:2px solid var(--ecto);outline-offset:2px}
 .start{background:var(--ecto);color:#0b0813;border:0;font-weight:600}
-.legend{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:.9rem;line-height:1.7}
-.legend dt{font-weight:600;float:left;clear:left;width:7.5em}
-.legend dd{margin:0 0 0 7.5em;color:var(--mute)}
+.legend{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.5;overflow-x:auto}
+.legend table{width:100%;border-collapse:collapse}
+.legend th,.legend td{text-align:left;padding:4px 8px 4px 0;vertical-align:top}
+.legend thead th{color:var(--mute);font-weight:400;font-size:.75rem}
+.legend tbody th{font-weight:600}
+.legend td{color:var(--mute)}
+.inputs{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.inputs label{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--mute);cursor:pointer}
+button[aria-pressed="true"]{border-color:var(--ecto);color:var(--ecto)}
+#heard{margin:0;font-size:.8rem;color:var(--mute);min-height:1.2em}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 #log{font-size:.8rem;color:var(--mute);min-height:2.4em}
 #live{color:var(--ecto)}

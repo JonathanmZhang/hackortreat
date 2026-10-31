@@ -10,7 +10,7 @@
 <div class="wrap">
 <header>
 <h1>Poltergeist Remote</h1>
-<p>A ghost can't touch a light switch. Wave a hand at your webcam and the room obeys: no contact, no reaching, no fine motor control.</p>
+<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control.</p>
 </header>
 <div class="grid">
  <div>
@@ -28,14 +28,24 @@
   <div class="cam">
    <video id="v" playsinline muted></video>
    <canvas id="c" width="640" height="480"></canvas>
-   <div class="msg" id="camMsg">Camera is off. Start it, or use the buttons below.</div>
+   <div class="msg" id="camMsg">Camera is off. Start it, or use voice or the buttons below.</div>
   </div>
   <button class="start" id="startBtn">Start camera</button>
-  <dl class="legend">
-   <dt>Pinch</dt><dd>Flick the lights</dd>
-   <dt>Swipe</dt><dd>Change the TV channel</dd>
-   <dt>Fist</dt><dd>Slam the door</dd>
-  </dl>
+  <div class="inputs">
+   <button id="voiceBtn" aria-pressed="false">Start voice</button>
+   <label><input type="checkbox" id="faceOn" checked> Head &amp; face tracking</label>
+  </div>
+  <p id="heard" aria-live="polite">Voice is off.</p>
+  <div class="legend">
+   <table>
+    <thead><tr><th>Action</th><th>Hand</th><th>Say</th><th>Head &amp; face</th></tr></thead>
+    <tbody>
+     <tr><th scope="row">Flick the lights</th><td>Pinch</td><td>"Lights"</td><td>Nod</td></tr>
+     <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
+     <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
+    </tbody>
+   </table>
+  </div>
   <div class="btns">
    <button id="bL">Lights (L)</button>
    <button id="bC">Next channel (→)</button>
@@ -45,6 +55,7 @@
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
