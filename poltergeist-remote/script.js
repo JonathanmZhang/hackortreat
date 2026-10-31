@@ -23,8 +23,11 @@ const GESTURES={
  peace:{icon:'✌️',name:'Peace sign',action:'Next room'},
  horns:{icon:'🤘',name:'Horns',action:'Switch TV / Jukebox'},
  palm:{icon:'✋',name:'Open palm',action:'Play / pause music'},
- brows:{icon:'🤨',name:'Raise eyebrows',action:'Switch TV / Jukebox'}};
-const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️','voice AI':'🤖'};
+ brows:{icon:'🤨',name:'Raise eyebrows',action:'Switch TV / Jukebox'},
+ thumb:{icon:'👍',name:'Thumbs up',get action(){return Monster.powerName()}},
+ point:{icon:'☝️',name:'Point',action:'Grab'},
+ turn:{icon:'↔️',name:'Turn head',get action(){return Monster.powerName()}}};
+const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️','voice AI':'🤖',hover:'🤚',game:'✨'};
 const CAP={frames:3,linger:400,fired:1200};
 // capVia names what triggered the next act(): a GESTURES key, a spoken word or a key label.
 let camOn=false,capVia=null,capCand=null,capKey=null,capRun=0,capHeld=null,capGap=0,capSeen=0,capUntil=0,capTimer=0,capSig='',capElapsed=0,capShown=[];
@@ -80,14 +83,17 @@ function renderHist(){
   a.className='what';a.textContent=h.text;s.className='src';s.textContent=h.src;
   li.append(t,a,s);ul.appendChild(li)})}
 function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist();setCaption(capVia,'fired',{text,src});capVia=null}
+// note: feedback that is not a command (a failed grab, a garlic wearer). Shown in the log and caption, not saved in the history.
+function note(text,src){log(text);setCaption(capVia,'fired',{text,src:src||'game'});capVia=null}
+function award(n){score+=n;$('score').textContent=score}
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
-function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);Academy.on('lights');if(!lightsOn)Academy.on('lightsOff');act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
-function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();Academy.on('channel');act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
-function slam(src){Room.slam();Sfx.slam();Academy.on('door');
- plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
-function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);if(blindsOn)Academy.on('blinds');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);Academy.on('act');Academy.on('lights');if(!lightsOn)Academy.on('lightsOff');act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(Monster.fear('lights'))}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();Academy.on('act');Academy.on('channel');act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(Monster.fear('channel'))}
+function slam(src){Room.slam();Sfx.slam();Academy.on('act');Academy.on('door');
+ plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(Monster.fear('door'))}
+function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);Academy.on('act');Academy.on(blindsOn?'blinds':'blindsOpen');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
 
 // ---------- Focus: the ghost possesses the TV or the jukebox ----------
 // Next and previous go to whichever one has focus. They return false if the cooldown or a missing connection blocked them.
@@ -107,7 +113,7 @@ function trackStep(d,src){
  (d>0?Spotify.next():Spotify.previous()).then(ok=>{
   if(!ok){log(Spotify.state().msg||'Spotify could not do that.');return}
   let off=null,t=0;
-  const finish=text=>{if(!off)return;off();off=null;clearTimeout(t);capVia=via;act(text,src);haunt(1)};
+  const finish=text=>{if(!off)return;off();off=null;clearTimeout(t);capVia=via;act(text,src);haunt(Monster.fear('channel'))};
   off=Spotify.onChange(s=>{if(s.trackId&&s.trackId!==before)finish('Skipped to: '+s.track)});
   t=setTimeout(()=>finish(d>0?'Next song':'Previous song'),1500)});
  return true}
@@ -121,7 +127,7 @@ function playPause(want,src,uri){
  if(!uri&&will===playing){log('The music is already '+(will?'playing':'paused')+'.');return true}
  (will?Spotify.play(uri):Spotify.togglePlay()).then(ok=>{
   if(!ok){log(Spotify.state().msg||'Spotify could not do that.');return}
-  capVia=via;act(uri?'Spooky music playing':will?'Music playing':'Music paused',src);haunt(1)});
+  capVia=via;act(uri?'Spooky music playing':will?'Music playing':'Music paused',src);haunt(Monster.fear('channel'))}); // music scares like a channel change
  return true}
 const spooky=src=>playPause(true,src,HAUNT_PLAYLIST||undefined);
 // Polling can end a login, and that must not leave focus on a jukebox nobody can reach.
@@ -131,7 +137,8 @@ paintFocus();
 $('bB').onclick=()=>blinds('button');
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>next('button');$('bD').onclick=()=>slam('button');
 $('jPrev').onclick=()=>trackStep(-1,'button');$('jNext').onclick=()=>trackStep(1,'button');$('jPlay').onclick=()=>playPause(undefined,'button');
-addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←',' ':'Space'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')next('keyboard');if(e.key==='ArrowLeft')previous('keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');
+$('bP').onclick=()=>{if(ready('power',1400))Monster.use('button')};$('bG').onclick=()=>Monster.grab(null,'button');
+addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←',' ':'Space'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')next('keyboard');if(e.key==='ArrowLeft')previous('keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key==='g'||e.key==='G')Monster.grab(null,'keyboard');if((e.key==='p'||e.key==='P')&&ready('power',1400))Monster.use('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');
  if((e.key==='m'||e.key==='M')&&!e.ctrlKey&&!e.metaKey)switchFocus('toggle','keyboard');
  // Space keeps its normal job on focused controls, and keeps scrolling the page until Spotify is set up.
  if(e.key===' '&&Spotify.ready()&&!(e.target.closest&&e.target.closest('button,input,summary'))){e.preventDefault();if(!e.repeat)playPause(undefined,'keyboard')}
@@ -150,7 +157,8 @@ function paintTabs(){[...tabs.children].forEach((b,i)=>b.setAttribute('aria-pres
 function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch,blinds:blindsOn};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;blindsOn=RS[i].blinds;
  Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);Room.blinds&&Room.blinds(blindsOn);paintTabs();sync();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
 function nextRoom(src){goRoom((cur+1)%ROOMS.length,src)}
-function haunt(n){const r=Room.scare(n<3?n*Academy.f:n);if(!r.hit)return;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();Academy.on('scare');if(r.fled)Academy.on('flee');score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
+// n = fear to add (already scaled by the monster: see Monster.fear). 0 means this action does not scare. by = optional label for the log.
+function haunt(n,by){if(!(n>0))return false;const r=Room.scare(n);if(!r.hit)return false;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();Academy.on('scare');if(r.fled)Academy.on('flee');award(r.fled?60:10);log((by?by+': ':'')+(r.fled?'The visitor ran screaming! +60':'Spooked them! +10'));return true}
 function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
 function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
 Room.on=(type,i)=>{const n=ROOMS[i];
@@ -159,7 +167,7 @@ Room.on=(type,i)=>{const n=ROOMS[i];
  sync()};
 paintTabs();sync();
 
-// Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'track', 'slam', 'room', 'focus', 'play'.
+// Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'track', 'slam', 'room', 'focus', 'play', 'power', 'grab', 'blinds'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 // A pose that must be held. Fires once per hold (done) and forgives a dropped frame or two of tracking.
@@ -184,6 +192,9 @@ function detect(lm){
   else setCaption('horns','detecting',hE,HOLD.horns);
   return}
  if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500)){capVia='peace';nextRoom('hand')}else setCaption('peace','cooldown');return}
+ const thumb=curled&&dist(lm[4],lm[0])/scale>1.2&&lm[4].y<lm[3].y&&lm[3].y<lm[2].y&&lm[4].y<lm[5].y-scale*.4;
+ if(thumb){if(ready('power',1400)){capVia='thumb';Monster.use('hand')}else setCaption('thumb','cooldown');return}
+ if(!pinch&&ext(8,6)&&!ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('grab',900)){capVia='point';Monster.grab(null,'hand')}else setCaption('point','cooldown');return}
  if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
  if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
  // Open palm held still -> play/pause. People swipe with an open hand, so any wrist movement restarts the hold, and it can't return here.
@@ -202,8 +213,8 @@ function detect(lm){
 // ---------- Head & face (MediaPipe Face Mesh) ----------
 // Tune these if it triggers too easily or not at all.
 // brow: how far above this face's neutral the eyebrows must rise, as a fraction of face height. browFrames: neutral frames to average.
-const FACE={nod:0.09,tilt:18,mouth:0.12,hold:350,brow:0.02,browFrames:30};
-const pitchHist=[],browH={since:0,seen:0,done:false};let tiltArmed=true,tiltSince=0,mouthSince=0,browN=0,browBase=0,browP=0,browSeen=0;
+const FACE={nod:0.09,tilt:18,mouth:0.12,turn:0.3,hold:350,brow:0.02,browFrames:30};
+const pitchHist=[],browH={since:0,seen:0,done:false};let tiltArmed=true,tiltSince=0,mouthSince=0,yawArmed=true,yawSince=0,browN=0,browBase=0,browP=0,browSeen=0;
 function detectFace(lm){
  const now=performance.now(),faceH=dist(lm[10],lm[152])||.1,mouthOpen=dist(lm[13],lm[14])/faceH>FACE.mouth;
  if(now-browSeen>2000)browN=0; // a new face (or none for a while): calibrate again
@@ -226,6 +237,15 @@ function detectFace(lm){
  // A tilt fires once per hold: once the cooldown ends, the head has to straighten before it can fire again.
  else setCaption(tilt,'cooldown',now-cool[stepKey()]<900?'':'straighten head to repeat');
  if(big)return;
+ // Turn head sideways (hold briefly) -> use your monster power
+ const yaw=(lm[1].x-(lm[33].x+lm[263].x)/2)/(Math.abs(lm[263].x-lm[33].x)||.1);
+ if(Math.abs(yaw)<.12)yawArmed=true;
+ if(Math.abs(yaw)>FACE.turn){
+  if(yawArmed){yawSince=yawSince||now;
+   if(now-yawSince>FACE.hold){if(ready('power',1400)){capVia='turn';Monster.use('face');pitchHist.length=0}else setCaption('turn','cooldown');yawArmed=false;yawSince=0}
+   else setCaption('turn','detecting',now-yawSince)}
+  return}
+ yawSince=0;
  // Nod (down and back up) -> flick the lights
  const eyeY=(lm[33].y+lm[263].y)/2,pitch=(lm[1].y-eyeY)/((lm[152].y-eyeY)||.1);
  pitchHist.push({t:now,p:pitch});while(pitchHist.length&&now-pitchHist[0].t>900)pitchHist.shift();
@@ -260,6 +280,8 @@ function voiceCmd(t){
  if(m=t.match(/\bliving\b/))return go(0);
  if(m=t.match(/\bbed(room)?\b/))return go(1);
  if(m=t.match(/\bkitchen\b/))return go(2);
+ if(m=t.match(/\b(grab|take|snatch|summon)\b/)){if(ready('grab',900)){said();Monster.grab(Monster.itemIn(t),'voice')}return true}
+ if(m=t.match(/\b(bite|cast|spell|hex|curse|howl|wail|power)\b/)){if(ready('power',1400)){said();Monster.use('voice')}return true}
  if(m=t.match(/\b(slam|slammed|slams|door)\b/)){if(ready('slam',1500)){said();slam('voice')}return true}
  if(m=t.match(/\b(lights?|flick)\b/)){if(ready('lights',1200)){said();lights('voice')}return true}
  // Specific phrases first: these ignore focus.
@@ -305,6 +327,8 @@ async function runPlan(actions,src){
   else if(a.type==='door')slam(src);
   else if(a.type==='room')goRoom(a.room-1,src);
   else if(a.type==='music')musicOp(a.op,src);
+  else if(a.type==='power')Monster.use(src);
+  else if(a.type==='grab')Monster.grab(a.item||null,src);
   await sleep(400)}}
 async function aiCommand(t){
  const heard=$('heard');heard.textContent='Thinking: "'+t+'"';

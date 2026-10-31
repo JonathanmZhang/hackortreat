@@ -14,17 +14,28 @@ A Halloween hackathon project: a ghost can't touch a light switch, so everything
 | Play / pause music | Open palm, held still for 1 second | "Play", "Pause", "Stop", "Music on", "Music off", "Spooky music" | |
 | Slam the door (and trigger the smart plug) | Fist | "Slam" (or "Door") | Open mouth wide for a moment |
 
-Keyboard fallbacks: `L` lights, `←` `→` next / previous, `D` door, `M` switch TV / jukebox, `Space` play / pause.
+Monster power and grabbing: **thumbs up**, saying "bite", "cast", "howl" or "wail", **turning your head** for a moment, or `P` uses your monster's power. **Pointing** a finger, saying "grab" (or "grab the skull") or `G` grabs the nearest ingredient (witch only; hovering over one for a moment also works).
+
+Keyboard fallbacks: `L` lights, `←` `→` next / previous, `D` door, `B` blinds, `P` power, `G` grab, `M` switch TV / jukebox, `Space` play / pause.
 
 All inputs share one cooldown per action, so a nod plus a spoken "Lights" at the same moment only flicks the lights once.
 
 ## Fright Academy (monster builder)
 
-The page opens on a carousel where you build a monster: species (ghost or vampire), colour and accessory. The build sets three stats: **scare** (more fear per action), **stealth** (slows a vampire's sunlight burn) and **stamina** (shorter cooldowns). The **Instructor** panel then trains your monster with a short course of objectives. Ghosts learn to flick, swipe and slam, then scare a visitor. Vampires must switch the lights off, close the **blinds** (key `B`, button, or say "blinds") and keep their **sunlight exposure** low while scaring. **Change monster** reopens the carousel; your last build is remembered.
+The page opens on a carousel where you build a monster: species, colour and accessory. Each species has its own 3D model in the room (the accessory and colour show on it too) and its own way of scaring. The build sets three stats: **scare** (more fear per action), **stealth** (slows a vampire's sunlight burn) and **stamina** (shorter cooldowns). **Change monster** reopens the carousel; your last build is remembered.
+
+| Monster | How it scares | What gets in the way |
+| --- | --- | --- |
+| Ghost | Flicks lights, changes the channel, slams the door, wails | nothing special |
+| Vampire | **Bites** a visitor who is within reach, in a dark room with the blinds open (moonlight). A second bite within 9 seconds turns them into a vampire and they walk out (+80) | bright lights burn you (exposure bar); a visitor wearing a **garlic necklace** makes you recoil; touching the **mirror** on the back wall shows you have no reflection and puts everyone on guard |
+| Witch | **Grabs** ingredients (hover over one, point, or say "grab"), then **casts**. Any two of skull, candle, pumpkin, spider and potion make one of ten spells, each with its own strength | needs two ingredients and a visitor to aim at; a third grab drops the oldest |
+| Werewolf | **Howls** at the moon (lights off, blinds open) and claws at the door | a howl in a bright room or with the blinds shut falls flat |
+
+The **Instructor** gives goals, not instructions. Each goal says what to achieve ("Plunge the room into darkness"), never which gesture or key to use, and goals still to come show as `???`. Press **Hint** for a nudge written for your monster (each press gives a stronger one), or wait: if you are stuck the instructor offers a hint on its own after about 25 seconds. The instructor also makes the odd remark when something goes wrong, like a garlic wearer or a mirror.
 
 ## Rooms and visitors
 
-There are three rooms: living room, bedroom and kitchen. Every so often a visitor walks in through the door of a random room, an alert pops up with a **Go there** button and a red dot appears on that room's tab. Switch rooms and haunt them: flicking the lights or changing the channel adds a little fear, slamming the door scares them off at once. Points: +10 per fright, +60 when a visitor flees. Visitors who aren't scared leave on their own after about 30 seconds.
+There are three rooms: living room, bedroom and kitchen. Every so often a visitor walks in (some wear garlic) through the door of a random room, an alert pops up with a **Go there** button and a red dot appears on that room's tab. Switch rooms and haunt them: flicking the lights or changing the channel adds a little fear, slamming the door scares them off at once. Points: +10 per fright, +60 when a visitor flees. Visitors who aren't scared leave on their own after about 30 seconds.
 
 Switch rooms with the tabs, keys `1` `2` `3`, a **peace sign** (index and middle finger up) or by saying "living room", "bedroom" or "kitchen". Each room remembers its own lights and TV channel.
 
@@ -62,7 +73,7 @@ Open **Command history** under the room to see every action so far (newest first
 
 ## AI voice commands (free-form)
 
-Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Gemini turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, music when Spotify is connected, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
+Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Gemini turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, your monster power, grabbing an ingredient, music when Spotify is connected, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
 
 How it works: the browser sends the finished phrase to `server.js` (`/api/interpret`), which calls the Gemini API with your key and a fixed set of allowed actions. The key never reaches the browser, the server only accepts known actions in range from the model's answer, and requests are rate-limited to 20 per minute per address. If the server or the API is unavailable, voice falls back to the keywords. Spoken phrases are only sent when the **AI voice** checkbox is on, and the server doesn't log them.
 
@@ -105,7 +116,8 @@ Notes:
 - Cooldowns: the millisecond values in `ready('lights', 1200)` and similar
 - Voice words: the patterns in `voiceCmd()`
 - Sounds: each effect is a short function in `audio.js` (`slam()`, `whoo()`, `scream()` and so on); the heartbeat range is in `beat()`
-- Monsters: species, colours, accessories and training courses are plain objects at the top of `academy.js`
+- Monsters: species, colours, accessories, goals and hints are plain objects at the top of `academy.js`; the 3D models (`MON.Ghost`, `MON.Vampire`, `MON.Witch`, `MON.Werewolf`) are in `room3d.js`
+- Powers: the fear each species gets from plain actions (`FEAR`), the witch's ten spells (`SPELLS`) and the bite, cast, howl and wail rules are in `monsters.js`
 - Colours: `--cyan`, `--mag` and `--acid` at the top of `style.css`
 - AI voice: the model (`GEMINI_MODEL` environment variable) and the instructions in `SYSTEM` in `server.js`; add a new action by extending `TOOL`, `clean()` and `runPlan()`
 - TV channels: the `CH` array at the top of `script.js`
@@ -117,10 +129,11 @@ Notes:
 index.html   page markup
 style.css    styling
 script.js    hand, voice and head/face detection, plus controls and the minimap
-academy.js   monster builder, stats and the instructor's training course
+academy.js   monster builder, stats and the instructor (goals and hints)
+monsters.js  each monster's power: bite, cast, howl, wail, grabbing
 audio.js     all sound effects and ambience (Web Audio), plus mute and volume
 spotify.js   Spotify login and controls (PKCE, no secret), plus the jukebox's now-playing display
-room3d.js    3D haunted room (Three.js)
+room3d.js    3D haunted room and the four monster models (Three.js)
 server.js    optional Node server: serves the site and powers AI voice
 package.json `npm start` runs server.js (no dependencies)
 .env.example copy to .env and add your API key (.env is git-ignored)

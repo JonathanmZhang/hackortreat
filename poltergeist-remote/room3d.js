@@ -4,7 +4,7 @@ const host=document.getElementById('room');
 let R;
 try{R=new THREE.WebGLRenderer({antialias:true})}catch(e){
  host.insertAdjacentHTML('beforeend','<p style="padding:16px;color:#9a8fb0">3D view needs WebGL. Gestures still work.</p>');
- window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},blinds(){},skin(){},scare(){return{hit:false}}};return}
+ window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},blinds(){},skin(){},scare(){return{hit:false}},setMonster(){},visitor(){return null},bite(){return null},hover(){return null},ring(){},hold(){},cast(){},mirrorNear(){return false},mirrorFlash(){},moon(){}};return}
 const W=()=>host.clientWidth||640,H=()=>host.clientHeight||400;
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(W(),H(),false);
 R.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
@@ -35,7 +35,7 @@ add(bx(.2,5,8),sideM,5.1,2.5,1);
 // window with moon
 const fr=M(0x120b1c);
 add(new THREE.PlaneGeometry(1.6,2),new THREE.MeshBasicMaterial({color:0x14204a}),-2.6,3.1,-2.97);
-add(new THREE.CircleGeometry(.35,24),new THREE.MeshBasicMaterial({color:0xfff1c4}),-2.3,3.5,-2.96);
+const moon=add(new THREE.CircleGeometry(.35,24),new THREE.MeshBasicMaterial({color:0xfff1c4}),-2.3,3.5,-2.96);
 [[1.8,.1,0,1.05],[1.8,.1,0,-1.05],[.1,2.2,.85,0],[.1,2.2,-.85,0],[1.7,.06,0,0],[.06,2,0,0]]
  .forEach(a=>add(bx(a[0],a[1],.1),fr,-2.6+a[2],3.1+a[3],-2.94));
 // blinds (closed = slats over the window; the vampire's friend)
@@ -77,7 +77,7 @@ drawTV();
 
 // skull on the cabinet
 const bone=M(0xe8e2cf,{emissive:0x222018});
-add(new THREE.SphereGeometry(.25,14,10),bone,-1.9,1.15,-2.3);
+const skull=add(new THREE.SphereGeometry(.25,14,10),bone,-1.9,1.15,-2.3);
 add(bx(.26,.12,.2),bone,-1.9,.93,-2.2);
 [-.09,.09].forEach(x=>add(new THREE.SphereGeometry(.06,8,6),new THREE.MeshBasicMaterial({color:0x000000}),-1.9+x,1.18,-2.07));
 
@@ -104,8 +104,17 @@ function pumpkin(x,z,s,ry){
  const fm=new THREE.MeshBasicMaterial({color:0xffd070});
  [-.2,.2].forEach(ex=>add(new THREE.CircleGeometry(.1,3),fm,ex,.52,.54,g));
  add(new THREE.CircleGeometry(.24,12,Math.PI,Math.PI),fm,0,.34,.54,g);
- const l=new THREE.PointLight(0xff8a2b,.8,5);l.position.set(0,.5,.8);l.userData.b=.8;g.add(l);flick.push(l)}
-pumpkin(3.6,1.4,1.3,-.5);pumpkin(-1.6,2.0,.8,.35);pumpkin(-2.4,-1.3,.7,.5);
+ const l=new THREE.PointLight(0xff8a2b,.8,5);l.position.set(0,.5,.8);l.userData.b=.8;g.add(l);flick.push(l);return g}
+const pumpA=pumpkin(3.6,1.4,1.3,-.5);pumpkin(-1.6,2.0,.8,.35);pumpkin(-2.4,-1.3,.7,.5);
+
+// mirror on the back wall: a vampire casts no reflection, so it keeps away from it
+const mirM=(()=>{const c=document.createElement('canvas');c.width=64;c.height=128;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,64,128);
+ g.addColorStop(0,'#cfe9ff');g.addColorStop(.5,'#6f8fb8');g.addColorStop(1,'#a9c8ee');x.fillStyle=g;x.fillRect(0,0,64,128);
+ x.fillStyle='rgba(255,255,255,.35)';x.beginPath();x.moveTo(8,128);x.lineTo(30,0);x.lineTo(40,0);x.lineTo(18,128);x.fill();
+ return new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)})})();
+add(bx(.98,1.9,.08),M(0x2a1a3a),4.5,2.2,-2.96);
+add(new THREE.PlaneGeometry(.84,1.76),mirM,4.5,2.2,-2.915);
+const MIRP=new THREE.Vector3(4.5,2.2,-2.95);
 
 // cauldron
 const cm=M(0x15121a,{metalness:.5,roughness:.5,side:2});
@@ -144,11 +153,107 @@ sp.position.set(4.2,3.3,-2.2);
 // the ghost (you)
 const gh=new THREE.Group();S.add(gh);
 const gM=M(0xffffff,{transparent:true,opacity:.88,emissive:0xcfe8ff,emissiveIntensity:.3});
-add(new THREE.CylinderGeometry(.45,.62,.9,16),gM,0,0,0,gh);
-add(new THREE.SphereGeometry(.45,16,12),gM,0,.45,0,gh);
-[-.16,.16].forEach(x=>add(new THREE.SphereGeometry(.07,8,6),new THREE.MeshBasicMaterial({color:0x0a0710}),x,.5,.38,gh));
+const eye=(r,c,x,y,z,p)=>add(new THREE.SphereGeometry(r,8,6),new THREE.MeshBasicMaterial({color:c}),x,y,z,p);
+const ball=(r,m,x,y,z,p)=>add(new THREE.SphereGeometry(r,14,10),m,x,y,z,p);
+const cyl=(a,b,h,m,x,y,z,p,n)=>add(new THREE.CylinderGeometry(a,b,h,n||12),m,x,y,z,p);
+const cone=(r,h,m,x,y,z,p,n)=>add(new THREE.ConeGeometry(r,h,n||8),m,x,y,z,p);
+// One model per species, all facing the camera (+z). head = where accessories go (top of head, eye height, how far forward the face is).
+const MON={};
+MON.Ghost=(()=>{const g=new THREE.Group();
+ cyl(.45,.62,.9,gM,0,0,0,g,16);ball(.45,gM,0,.45,0,g);
+ [-.16,.16].forEach(x=>eye(.07,0x0a0710,x,.5,.38,g));
+ return{g,tint:[gM],head:{top:.9,eye:.5,z:.42}}})();
+const vcM=M(0xb0103a,{side:2,emissive:0xb0103a,emissiveIntensity:.25});
+MON.Vampire=(()=>{const g=new THREE.Group();
+ cyl(.3,.5,1,M(0x15101f),0,-.05,0,g,14);
+ add(new THREE.CylinderGeometry(.42,.82,1.2,18,1,true,Math.PI*.35,Math.PI*1.3),vcM,0,-.08,-.04,g); // swept-back cape
+ add(new THREE.CylinderGeometry(.26,.34,.28,12,1,true),vcM,0,.4,0,g); // high collar
+ ball(.3,M(0xe9e4ee),0,.68,0,g);
+ add(new THREE.SphereGeometry(.32,14,8,0,Math.PI*2,0,Math.PI*.48),M(0x0b0810),0,.72,-.02,g); // slicked hair
+ [-.11,.11].forEach(x=>eye(.045,0xff2b4a,x,.7,.27,g));
+ [-.07,.07].forEach(x=>{const f=cone(.03,.1,M(0xffffff),x,.55,.27,g,6);f.rotation.x=Math.PI}); // fangs
+ return{g,tint:[vcM],head:{top:1.03,eye:.7,z:.28}}})();
+const wbM=M(0xff2bd6,{emissive:0xff2bd6,emissiveIntensity:.3}),witchHat=new THREE.Group();
+MON.Witch=(()=>{const g=new THREE.Group(),skin=M(0x8fd47a),robe=M(0x3a1a5a),dk=M(0x16101f);
+ cyl(.2,.62,1.1,robe,0,-.05,0,g,14);
+ ball(.26,skin,0,.66,0,g);
+ const nose=cone(.05,.14,M(0x6fb85c),0,.62,.27,g,6);nose.rotation.x=Math.PI/2;
+ [-.1,.1].forEach(x=>eye(.04,0xfff27a,x,.7,.23,g));
+ [-.27,.27].forEach(x=>cyl(.05,.03,.45,M(0xc2552a),x,.42,0,g,6)); // braids
+ g.add(witchHat);
+ cyl(.5,.5,.04,dk,0,.86,0,witchHat,20);
+ const tip=cone(.3,.75,dk,0,1.27,0,witchHat,16);tip.rotation.z=.12;
+ const band=add(new THREE.TorusGeometry(.29,.04,6,20),wbM,0,.92,0,witchHat);band.rotation.x=Math.PI/2;
+ const handle=cyl(.03,.03,1.5,M(0x6b4a33),0,-.58,.1,g,6);handle.rotation.z=Math.PI/2; // broom
+ const bristles=cone(.15,.42,M(0xc9a55b),-.86,-.58,.1,g,10);bristles.rotation.z=-Math.PI/2;
+ const arm=cyl(.06,.06,.5,robe,.36,.1,.15,g,8);arm.rotation.z=-.9;ball(.07,skin,.55,.3,.2,g); // reaching hand
+ return{g,tint:[wbM],head:{top:.92,eye:.7,z:.24},hat:witchHat}})();
+const weM=new THREE.MeshBasicMaterial({color:0xffe14a});
+MON.Werewolf=(()=>{const g=new THREE.Group(),fur=M(0x6b4a33,{roughness:1}),fur2=M(0x4a3222,{roughness:1}),white=M(0xf2efe6);
+ const b=ball(.5,fur,0,-.1,0,g);b.scale.set(1,1.3,.9);
+ const bl=ball(.3,M(0x9a7a5a,{roughness:1}),0,-.05,.3,g);bl.scale.set(1,1.3,.5);
+ ball(.3,fur,0,.68,0,g);
+ const sn=cone(.13,.34,fur2,0,.6,.35,g,8);sn.rotation.x=Math.PI/2;
+ eye(.05,0x000000,0,.6,.52,g);
+ [-.2,.2].forEach(x=>cone(.1,.28,fur2,x,1.0,-.02,g,6));
+ [-.12,.12].forEach(x=>add(new THREE.SphereGeometry(.055,8,6),weM,x,.75,.25,g));
+ [-.06,.06].forEach(x=>add(bx(.03,.07,.02),white,x,.52,.44,g));
+ [-1,1].forEach(d=>{const a=cyl(.08,.11,.7,fur,d*.55,-.05,.05,g,8);a.rotation.z=d*.35;
+  [-.05,0,.05].forEach(o=>{const c=cone(.02,.1,white,d*.66+o,-.42,.08,g,5);c.rotation.x=Math.PI})});
+ const tail=cone(.1,.5,fur2,0,-.45,-.5,g,8);tail.rotation.x=-Math.PI*.6;
+ return{g,tint:[weM],head:{top:1.0,eye:.75,z:.27}}})();
+Object.values(MON).forEach(m=>{m.g.visible=false;gh.add(m.g)});MON.Ghost.g.visible=true;
+const accG=new THREE.Group();let monSp='Ghost';
+function tintM(m,h){m.color.setHex(h);if(m.emissive)m.emissive.setHex(h)}
+function setMonster(name,hex,acc){
+ monSp=MON[name]?name:'Ghost';const m=MON[monSp];
+ Object.values(MON).forEach(o=>o.g.visible=o===m);m.tint.forEach(x=>tintM(x,hex));
+ while(accG.children.length)accG.remove(accG.children[0]);m.g.add(accG);
+ Object.values(MON).forEach(o=>{if(o.hat)o.hat.visible=!(o===m&&acc==='Top hat')}); // a top hat replaces the witch's pointed one
+ const h=m.head;
+ if(acc==='Top hat'){const k=M(0x14101c,{roughness:.6});
+  cyl(.2,.2,.32,k,0,h.top+.16,0,accG,18);cyl(.34,.34,.04,k,0,h.top,0,accG,20);
+  cyl(.205,.205,.07,new THREE.MeshBasicMaterial({color:hex}),0,h.top+.06,0,accG,18)}
+ else if(acc==='Sunglasses'){const k=new THREE.MeshBasicMaterial({color:0x05030a});
+  [-.11,.11].forEach(x=>add(bx(.16,.09,.03),k,x,h.eye,h.z+.02,accG));add(bx(.1,.02,.03),k,0,h.eye+.02,h.z+.02,accG)}}
 gh.position.set(1.6,3.3,.5);
 const gt={x:1.6,y:3.3};let lastHand=-9999;
+
+// ---------- Props a witch can grab, and helpers that compare the monster with things on screen ----------
+const PROPS={skull:{o:skull,y:0},candle:{o:flames[1],y:0},pumpkin:{o:pumpA,y:.5},potion:{o:liq,y:.1},spider:{o:sp,y:0}};
+const PC={skull:0xe8e2cf,candle:0xffc56b,pumpkin:0xff8a2b,spider:0xb28cff,potion:0x7df3c6};
+const _v=new THREE.Vector3(),_a=new THREE.Vector3(),_b=new THREE.Vector3();
+const asp=()=>W()/H();
+const nd=(v,o)=>o.copy(v).project(C); // screen position (-1..1)
+const sdist=(a,b)=>Math.hypot((a.x-b.x)*asp(),a.y-b.y);
+function propPos(k){const p=PROPS[k];p.o.getWorldPosition(_v);_v.y+=p.y;return _v}
+function hover(reach){nd(gh.position,_a);let best=null,bd=reach||.3;
+ for(const k in PROPS){nd(propPos(k),_b);const d=sdist(_a,_b);if(d<bd){bd=d;best=k}}return best}
+const ringM=new THREE.MeshBasicMaterial({color:0xff2bd6,transparent:true,opacity:.9,depthTest:false,fog:false});
+const hoverRing=new THREE.Mesh(new THREE.RingGeometry(.3,.36,32),ringM);hoverRing.visible=false;hoverRing.renderOrder=10;S.add(hoverRing);
+function ring(k,p){if(!k){hoverRing.visible=false;return}
+ hoverRing.position.copy(propPos(k));hoverRing.lookAt(C.position);hoverRing.scale.setScalar(1.5-.6*(p||0));ringM.opacity=.4+.5*(p||0);hoverRing.visible=true}
+// Held ingredients orbit the witch; a cast sends them off as a bolt.
+const orbs=[],orbG=new THREE.SphereGeometry(.11,10,8),spellL=PL(0xffffff,0,8,0,2,0);
+let spellCol=0xffffff,flashK=0,mirK=0,moonK=0;
+function hold(keys){
+ for(let i=orbs.length-1;i>=0;i--){const o=orbs[i];if(o.mode!=='bolt'&&!keys.includes(o.k)){S.remove(o.m);orbs.splice(i,1)}}
+ keys.forEach(k=>{if(orbs.some(o=>o.k===k&&o.mode!=='bolt'))return;
+  const m=new THREE.Mesh(orbG,new THREE.MeshBasicMaterial({color:PC[k]}));m.position.copy(propPos(k));S.add(m);
+  orbs.push({k,m,mode:'fly',p:0,from:m.position.clone()})})}
+function cast(col){const v=vis[cur];
+ const to=v.m?new THREE.Vector3(v.m.position.x,v.m.position.y+1.3,v.m.position.z):new THREE.Vector3(0,2.2,-1);
+ spellCol=col;orbs.forEach(o=>{if(o.mode==='bolt')return;o.mode='bolt';o.p=0;o.from=o.m.position.clone();o.to=to;o.m.material.color.setHex(col)})}
+function orbsTick(t){
+ orbs.filter(o=>o.mode!=='bolt').forEach((o,i)=>{const m=o.m,
+  tx=gh.position.x+Math.cos(t*2.2+i*Math.PI)*.85,ty=gh.position.y+.25+Math.sin(t*3+i)*.1,tz=gh.position.z+.2+Math.sin(t*2.2+i*Math.PI)*.45;
+  if(o.mode==='fly'){o.p+=.045;const e=Math.min(1,o.p);
+   m.position.set(o.from.x+(tx-o.from.x)*e,o.from.y+(ty-o.from.y)*e+Math.sin(e*Math.PI)*.5,o.from.z+(tz-o.from.z)*e);if(e>=1)o.mode='orbit'}
+  else m.position.set(tx,ty,tz)});
+ for(let i=orbs.length-1;i>=0;i--){const o=orbs[i];if(o.mode!=='bolt')continue;
+  o.p+=.06;o.m.position.lerpVectors(o.from,o.to,Math.min(1,o.p));o.m.scale.setScalar(1.6+Math.sin(o.p*20)*.3);
+  if(o.p>=1){flashK=1;spellL.position.copy(o.to);spellL.color.setHex(spellCol);S.remove(o.m);orbs.splice(i,1)}}}
+function mirrorNear(){nd(gh.position,_a);nd(MIRP,_b);return sdist(_a,_b)<.3}
 
 // rooms: same layout, recoloured, with different furniture
 const RM=[[0x4a3a6e,0x3f3262,0xffffff],[0x3a4a7a,0x2f3a62,0xb8c8ff],[0x2f6a5a,0x265446,0xc8d8c8]];
@@ -218,13 +323,22 @@ function dbgPath(){if(!DBG)return;const v=vis[cur];dbgLine.geometry.dispose();
 
 function person(){
  const g=new THREE.Group(),c=[0x3b7dd8,0xd84a4a,0x4aa86a,0xd8a83b,0x8a5ad8][Math.random()*5|0];
- add(new THREE.CylinderGeometry(.22,.28,.8,12),M(c),0,1,0,g);
- add(new THREE.SphereGeometry(.2,12,10),M(0xf1c9a5),0,1.62,0,g);
+ const body=add(new THREE.CylinderGeometry(.22,.28,.8,12),M(c),0,1,0,g);
+ const head=add(new THREE.SphereGeometry(.2,12,10),M(0xf1c9a5),0,1.62,0,g);
  const l1=add(bx(.14,.6,.14),M(0x2a2a3a),-.12,.3,0,g),l2=add(bx(.14,.6,.14),M(0x2a2a3a),.12,.3,0,g);
  const bc=document.createElement('canvas');bc.width=128;bc.height=48;
  const bt=new THREE.CanvasTexture(bc),bub=new THREE.Sprite(new THREE.SpriteMaterial({map:bt,transparent:true}));
  bub.scale.set(1.3,.5,1);bub.position.y=2.3;bub.visible=false;g.add(bub);
- g.userData={l1,l2,bub,bc,bt};S.add(g);return g}
+ // garlic necklace (only some visitors wear one) and the fangs a turned visitor gets
+ const garlic=new THREE.Group();garlic.position.y=1.4;garlic.visible=false;g.add(garlic);
+ const gm=M(0xf4f0e0,{emissive:0x555544});
+ for(let i=0;i<9;i++){const a=i/9*Math.PI*2;add(new THREE.SphereGeometry(.05,8,6),gm,Math.sin(a)*.27,0,Math.cos(a)*.27,garlic)}
+ add(new THREE.SphereGeometry(.09,8,6),gm,0,-.1,.3,garlic).scale.y=1.3;
+ const fangs=new THREE.Group();fangs.visible=false;g.add(fangs);
+ [-.05,.05].forEach(x=>{const f=add(new THREE.ConeGeometry(.02,.07,5),M(0xffffff),x,1.55,.2,fangs);f.rotation.x=Math.PI});
+ [-.07,.07].forEach(x=>add(new THREE.SphereGeometry(.03,6,4),new THREE.MeshBasicMaterial({color:0xff2b4a}),x,1.66,.19,fangs));
+ g.userData={l1,l2,bub,bc,bt,body,head,garlic,fangs};S.add(g);return g}
+function makeVamp(m){const u=m.userData;u.head.material=M(0xe8e0f0);u.body.material=M(0x2a1030);u.fangs.visible=true}
 function say(v,t){const u=v.m.userData,x=u.bc.getContext('2d');x.clearRect(0,0,128,48);x.fillStyle='#fff';x.fillRect(0,0,128,40);
  x.fillStyle='#000';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText(t,64,28);u.bt.needsUpdate=true;u.bub.visible=true;v.say=performance.now()+1300}
 // Waypoints: open floor in front of the furniture and in the camera's view, on cells a visitor can reach.
@@ -236,7 +350,8 @@ function setWP(v,r,from){from=from||v.m.position;const g=GRID[r];let w=null;
 function setExit(v,r){v.exit=v.state;v.path=v.entering?[DOORP]:[...pathTo(r,v.m.position,ENTRY),DOORP];v.pi=0;dbgPath()}
 function spawn(i){
  if(vis[i].m)return;const m=person();m.position.copy(DOORP);m.visible=(i===cur);
- const v=vis[i]={m,state:'walk',fear:0,vy:0,say:0,entering:true,until:performance.now()+22000+Math.random()*10000};
+ const v=vis[i]={m,state:'walk',fear:0,vy:0,say:0,entering:true,garlic:Math.random()<.4,until:performance.now()+22000+Math.random()*10000};
+ m.userData.garlic.visible=v.garlic;
  setWP(v,i,ENTRY);v.path.unshift(ENTRY);dbgPath();
  window.Room.on&&window.Room.on('arrive',i)}
 function removeV(i,type){S.remove(vis[i].m);vis[i]={m:null};dbgPath();window.Room.on&&window.Room.on(type,i)}
@@ -250,7 +365,7 @@ function visitors(t){
   if(!free(i,p.x,p.z,VR-.1)){const q=cellXZ(nearest(i,p.x,p.z));p.x=q.x;p.z=q.z;v.entering=false;if(leaving)setExit(v,i);else setWP(v,i)}
   const q=v.path[v.pi],dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz);
   if(d<=spd){p.x=q.x;p.z=q.z;v.entering=false;
-   if(++v.pi>=v.path.length){if(leaving){removeV(i,v.state==='flee'?'fled':'leave');return}setWP(v,i)}}
+   if(++v.pi>=v.path.length){if(leaving){removeV(i,v.state==='flee'?'fled':v.state==='turned'?'turned':'leave');return}setWP(v,i)}}
   else{p.x+=dx/d*spd;p.z+=dz/d*spd;m.rotation.y=Math.atan2(dx,dz)}
   v.vy-=.012;m.position.y=Math.max(0,m.position.y+v.vy);if(m.position.y===0)v.vy=0;
   const w=Math.sin(t*(v.state==='flee'?18:8))*.5;u.l1.rotation.x=w;u.l2.rotation.x=-w;
@@ -258,6 +373,15 @@ function visitors(t){
 function scare(n){
  const v=vis[cur];if(!v.m||v.state!=='walk')return{hit:false};
  v.fear+=n;v.vy=.1;const fled=v.fear>=3;say(v,fled?'NOPE!':'Aah!');if(fled)v.state='flee';return{hit:true,fled}}
+// Vampire bite: the first makes a visitor dizzy, a second within 9 seconds turns them (they walk out as a vampire).
+function bite(){const v=vis[cur];if(!v.m||v.state!=='walk')return null;const now=performance.now();
+ if(now-(v.biteAt||0)>9000)v.bites=0;v.bites=(v.bites||0)+1;v.biteAt=now;v.vy=.06;
+ if(v.bites>=2){v.state='turned';makeVamp(v.m);say(v,'Fangs!');return'turned'}
+ say(v,'Ow?');return'bitten'}
+// How the current room's visitor looks to the monster: state, garlic, and how far from the monster on screen.
+function visitor(){const v=vis[cur];if(!v.m)return null;
+ nd(_v.set(v.m.position.x,v.m.position.y+1.5,v.m.position.z),_b);nd(gh.position,_a);
+ return{state:v.state,garlic:!!v.garlic,d:sdist(_a,_b)}}
 function setRoom(i){cur=i;const r=RM[i];wallM.color.setHex(r[0]);sideM.color.setHex(r[1]);floorM.color.setHex(r[2]);
  ex.forEach((g,k)=>g.visible=k===i);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3;
  dbgG.forEach((g,k)=>g.visible=k===i);dbgPath()}
@@ -282,6 +406,8 @@ function loop(){
  if(performance.now()-lastHand>1500){gt.x=1.6+Math.sin(t*.4)*1.2;gt.y=3.3}
  const px0=gh.position.x;gh.position.x+=(gt.x-gh.position.x)*.08;gh.position.y+=(gt.y+Math.sin(t*2)*.12-gh.position.y)*.08;
  gh.rotation.z=-(gt.x-px0)*.15;
+ flashK*=.9;spellL.intensity=flashK*3;mirK*=.93;mirM.color.setHex(mirK>.12?0xff6070:0xffffff);moonK*=.96;moon.scale.setScalar(1+moonK*1.1);
+ orbsTick(t);
  visitors(t);
  C.position.set(mx*1.4+(Math.random()-.5)*shake*.15,2.7-my*.5+(Math.random()-.5)*shake*.15,6.4);shake*=.9;
  C.lookAt(0,2.1,-1);R.render(S,C)}
@@ -290,12 +416,14 @@ loop();
 new ResizeObserver(()=>{R.setSize(W(),H(),false);C.aspect=W()/H();C.updateProjectionMatrix()}).observe(host);
 
 window.Room={
- setRoom,scare,
+ setRoom,scare,setMonster,visitor,bite,hover,ring,hold,cast,mirrorNear,
+ mirrorFlash(){mirK=1},
+ moon(){moonK=1},
  blinds(c){blindsG.visible=!!c},
- skin(h){gM.color.setHex(h);gM.emissive.setHex(h)},
+ skin(h){MON[monSp].tint.forEach(x=>tintM(x,h))},
  lights(on){amb.intensity=on?.7:.12;lampL.intensity=on?1.4:0;shadeM.emissiveIntensity=on?.9:0;gM.emissiveIntensity=on?.3:.9},
  tv(text){tvT=text.split('<br>');drawTV()},
  slam(){dk=0;dkK=.4;shake=.6;setTimeout(()=>{dk=-1.15;dkK=.05},1400)},
- ghost(nx,ny){lastHand=performance.now();gt.x=Math.max(-4,Math.min(4,(nx-.5)*8));gt.y=Math.max(1.2,Math.min(4.4,4.4-ny*3.4))}
+ ghost(nx,ny){lastHand=performance.now();gt.x=Math.max(-4,Math.min(4,(nx-.5)*8));gt.y=Math.max(.4,Math.min(4.4,4.4-ny*4))}
 };
 })();

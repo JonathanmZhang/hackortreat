@@ -109,6 +109,22 @@ function tv(){
  out(g,.15);
  const b=osc('sine',1800,t,.1),bg=gain(0);b.frequency.exponentialRampToValueAtTime(420,t+.09);env(bg,t,.004,.15,.08);b.connect(bg);out(bg)}
 
+// ---------- Monster powers ----------
+function pluck(){const t=T(),o=osc('triangle',520,t,.25);o.frequency.exponentialRampToValueAtTime(900,t+.12);const g=gain(0);env(g,t,.005,.25,.2);o.connect(g);out(g,.4)}
+// Spell: a rising run of bell notes over a whoosh of noise.
+function spell(){const t=T();[523,659,784,1047,1319].forEach((f,i)=>{const o=osc('sine',f,t+i*.05,.5),g=gain(0);env(g,t+i*.05,.01,.16,.4);o.connect(g);out(g,.7)});
+ const n=noise(t,.6),bp=filt('bandpass',1200,1),g=gain(0);bp.frequency.setValueAtTime(1200,t);bp.frequency.exponentialRampToValueAtTime(4000,t+.5);n.connect(bp);bp.connect(g);env(g,t,.1,.3,.45);out(g,.5)}
+function fizzle(){const t=T(),o=osc('sawtooth',300,t,.4);o.frequency.exponentialRampToValueAtTime(70,t+.35);const lp=filt('lowpass',900),g=gain(0);o.connect(lp);lp.connect(g);env(g,t,.01,.3,.35);out(g,.2)}
+// Howl: a long rising, wobbling tone through two vowel-like filters.
+function howl(){const t=T(),d=2.2,o=osc('sawtooth',220,t,d+.1);
+ o.frequency.linearRampToValueAtTime(520,t+.7);o.frequency.linearRampToValueAtTime(480,t+1.4);o.frequency.linearRampToValueAtTime(300,t+d);
+ const v=osc('sine',5,t,d+.1),vg=gain(9);v.connect(vg);vg.connect(o.frequency);
+ const a=filt('bandpass',700,4),b=filt('bandpass',1500,5),g=gain(0),bg=gain(.5);o.connect(a);o.connect(b);b.connect(bg);a.connect(g);bg.connect(g);env(g,t,.35,1.1,1.8);out(g,.9)}
+function bite(){const t=T(),n=noise(t,.2),hp=filt('highpass',2500),g=gain(0);n.connect(hp);hp.connect(g);env(g,t,.002,.5,.12);out(g,.2);
+ const o=osc('square',1200,t,.12);o.frequency.exponentialRampToValueAtTime(300,t+.1);const og=gain(0);env(og,t,.002,.15,.1);o.connect(og);out(og)}
+function shatter(){const t=T();for(let i=0;i<8;i++){const f=rnd(2500,6500),o=osc('sine',f,t+i*.035,.25),g=gain(0);env(g,t+i*.035,.002,.12,.2);o.connect(g);out(g,.5)}
+ const n=noise(t,.3),hp=filt('highpass',3500),g=gain(0);n.connect(hp);hp.connect(g);env(g,t,.002,.5,.25);out(g,.3)}
+
 // ---------- Start, mute, volume ----------
 function build(){
  ctx=new AC();
@@ -146,6 +162,7 @@ const play=f=>(...a)=>{if(started&&!document.hidden)try{f(...a)}catch(e){}};
 window.Sfx={
  start,heart,duck,
  click:play(click),tv:play(tv),slam:play(slam),chime:play(chime),whoo:play(whoo),
+ pluck:play(pluck),spell:play(spell),fizzle:play(fizzle),howl:play(howl),bite:play(bite),shatter:play(shatter),
  scare:play(()=>{sting(false);bump=Math.min(.6,bump+.25);if(Math.random()<.5)gasp();else scream(.7,650)}),
  flee:play(()=>{sting(true);scream(1.5,560);bump=Math.min(.6,bump+.3)})
 };
