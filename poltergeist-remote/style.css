@@ -48,10 +48,13 @@ header p{color:var(--mute);margin:12px auto 26px;max-width:58ch;line-height:1.55
  box-shadow:0 0 0 2px #19f0ffaa,0 0 18px #19f0ff77,inset 0 0 70px #000,inset 0 0 18px #19f0ff44}
 .room::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
  background:repeating-linear-gradient(to bottom,#0000 0 2px,#00000038 2px 3px),radial-gradient(ellipse at center,#0000 55%,#000000b0 100%)}
-.plug,.score{position:absolute;left:3%;z-index:7;font-size:.8rem;color:var(--mute);background:#04100bcc;border:1px solid #b6ff2a66;border-radius:20px;padding:4px 11px}
+.plug,.score,.possess{position:absolute;left:3%;z-index:7;font-size:.8rem;color:var(--mute);background:#04100bcc;border:1px solid #b6ff2a66;border-radius:20px;padding:4px 11px}
 .score{top:4%}
 .plug{bottom:5%}
-.plug b,.score b{color:var(--acid)}
+.possess{left:auto;right:3%;bottom:5%}
+.plug b,.score b,.possess b{color:var(--acid)}
+.crt.possessed{box-shadow:0 0 0 4px #040b08,0 0 34px #b6ff2acc,0 0 90px #19f0ff44,0 26px 40px #000c,inset 0 2px 0 #4a8f74,inset 0 -10px 24px #0008}
+.jukebox.possessed{box-shadow:0 0 30px #ff2bd6cc,0 0 70px #ff2bd644,inset 0 0 22px #ff2bd655,0 14px 28px #000a}
 .deck{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding:12px 8px 18px}
 .led{flex:none;width:10px;height:10px;border-radius:50%;background:var(--acid);box-shadow:0 0 10px var(--acid);animation:led 3s ease-in-out infinite}
 @keyframes led{50%{opacity:.45}}

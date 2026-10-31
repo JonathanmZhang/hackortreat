@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 const logEl=$('log');
 $('lights').innerHTML='<i></i>'.repeat(48); // string lights; the CSS makes them blink
 const CH=["Ch 1<br>Static","Ch 2<br>Haunted Home Makeover","Ch 3<br>Séance Shopping","Ch 4<br>Ghost News at Nine"];
-let ch=0,lightsOn=true,plugOn=true,cool={};
+let ch=0,lightsOn=true,plugOn=true,cool={},focus='tv'; // focus: what next/previous control, 'tv' or 'jukebox'
 const ROOMS=['Living room','Bedroom','Kitchen'],RS=ROOMS.map(()=>({lights:true,ch:0}));let cur=0,score=0,alertT=0;
 function log(t){logEl.textContent=t}
 function ready(k,ms){const n=performance.now();if(cool[k]&&n-cool[k]<ms)return false;cool[k]=n;return true}
@@ -82,8 +82,38 @@ function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn
 function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
 function slam(src){Room.slam();Sfx.slam();
  plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
-$('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
-addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+
+// ---------- Focus: the ghost possesses the TV or the jukebox ----------
+// Next and previous go to whichever one has focus. They return false if the cooldown or a missing connection blocked them.
+const stepKey=()=>focus==='tv'?'channel':'track';
+function paintFocus(){const j=focus==='jukebox';$('possessT').textContent=j?'Jukebox':'TV';document.querySelector('.crt').classList.toggle('possessed',!j);$('jukebox').classList.toggle('possessed',j)}
+function setFocus(t,src){
+ if(t==='jukebox'&&!Spotify.connected()){capVia=null;log('Connect Spotify first.');return}
+ if(t===focus){capVia=null;log('The ghost is already possessing the '+(t==='tv'?'TV':'jukebox')+'.');return}
+ focus=t;paintFocus();act('The ghost now possesses the '+(t==='tv'?'TV':'jukebox'),src)}
+function switchFocus(t,src){if(!ready('focus',1500))return false;setFocus(t==='toggle'?(focus==='tv'?'jukebox':'tv'):t,src);return true}
+function tvStep(d,src){if(!ready('channel',900))return false;channel(d,src);return true}
+// act() waits until the new track is known, so remember what triggered this for the caption.
+function trackStep(d,src){
+ if(!Spotify.connected()){capVia=null;log('Connect Spotify first.');return false}
+ if(!ready('track',900))return false;
+ const via=capVia,before=Spotify.state().trackId;capVia=null;
+ (d>0?Spotify.next():Spotify.previous()).then(ok=>{
+  if(!ok){log(Spotify.state().msg||'Spotify could not do that.');return}
+  let off=null,t=0;
+  const finish=text=>{if(!off)return;off();off=null;clearTimeout(t);capVia=via;act(text,src);haunt(1)};
+  off=Spotify.onChange(s=>{if(s.trackId&&s.trackId!==before)finish('Skipped to: '+s.track)});
+  t=setTimeout(()=>finish(d>0?'Next song':'Previous song'),1500)});
+ return true}
+function next(src){return focus==='jukebox'?trackStep(1,src):tvStep(1,src)}
+function previous(src){return focus==='jukebox'?trackStep(-1,src):tvStep(-1,src)}
+// Polling can end a login, and that must not leave focus on a jukebox nobody can reach.
+Spotify.onChange(s=>{if(focus==='jukebox'&&!s.connected){focus='tv';paintFocus();log('Spotify is disconnected. The ghost is back on the TV.')}});
+paintFocus();
+
+$('bL').onclick=()=>lights('button');$('bC').onclick=()=>next('button');$('bD').onclick=()=>slam('button');
+$('jPrev').onclick=()=>trackStep(-1,'button');$('jNext').onclick=()=>trackStep(1,'button');
+addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')next('keyboard');if(e.key==='ArrowLeft')previous('keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -107,7 +137,7 @@ Room.on=(type,i)=>{const n=ROOMS[i];
  sync()};
 paintTabs();sync();
 
-// Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'slam'.
+// Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'track', 'slam', 'room', 'focus', 'play'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 // ---------- Hand gestures ----------
@@ -123,7 +153,7 @@ function detect(lm){
  if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
  if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
  if(hist.length>3){const dx=x-hist[0].x;
-  if(Math.abs(dx)>0.28&&ready('channel',900)){capVia=dx>0?'swipeR':'swipeL';channel(dx>0?1:-1,'hand');hist.length=0}}
+  if(Math.abs(dx)>0.28){capVia=dx>0?'swipeR':'swipeL';if((dx>0?next:previous)('hand'))hist.length=0;else capVia=null}}
 }
 
 // ---------- Head & face (MediaPipe Face Mesh) ----------
@@ -138,17 +168,17 @@ function detectFace(lm){
   if(now-mouthSince>FACE.hold){if(ready('slam',1500)){capVia='mouth';slam('face');pitchHist.length=0}else setCaption('mouth','cooldown')}
   else setCaption('mouth','detecting',now-mouthSince);
  }else mouthSince=0;
- // Head tilt toward a shoulder (hold briefly) -> change channel. Tilt right = next, left = previous.
+ // Head tilt toward a shoulder (hold briefly) -> next or previous on whatever has focus. Tilt right = next, left = previous.
  const roll=Math.atan2(lm[263].y-lm[33].y,lm[263].x-lm[33].x)*180/Math.PI,big=Math.abs(roll)>FACE.tilt;
  if(Math.abs(roll)<8)tiltArmed=true;
  const tilt=roll<0?'tiltR':'tiltL';
  if(big&&tiltArmed){
   tiltSince=tiltSince||now;
-  if(now-tiltSince>FACE.hold){if(ready('channel',900)){capVia=tilt;channel(roll<0?1:-1,'head')}else setCaption(tilt,'cooldown');tiltArmed=false;tiltSince=0;pitchHist.length=0}
+  if(now-tiltSince>FACE.hold){capVia=tilt;if(!(roll<0?next:previous)('head')){capVia=null;setCaption(tilt,'cooldown')}tiltArmed=false;tiltSince=0;pitchHist.length=0}
   else setCaption(tilt,'detecting',now-tiltSince);
  }else if(!big)tiltSince=0;
  // A tilt fires once per hold: once the cooldown ends, the head has to straighten before it can fire again.
- else setCaption(tilt,'cooldown',now-cool.channel<900?'':'straighten head to repeat');
+ else setCaption(tilt,'cooldown',now-cool[stepKey()]<900?'':'straighten head to repeat');
  if(big)return;
  // Nod (down and back up) -> flick the lights
  const eyeY=(lm[33].y+lm[263].y)/2,pitch=(lm[1].y-eyeY)/((lm[152].y-eyeY)||.1);
@@ -175,8 +205,19 @@ function voiceCmd(t){
  if(m=t.match(/\bkitchen\b/))return go(2);
  if(m=t.match(/\b(slam|slammed|slams|door)\b/)){if(ready('slam',1500)){said();slam('voice')}return true}
  if(m=t.match(/\b(lights?|flick)\b/)){if(ready('lights',1200)){said();lights('voice')}return true}
- if(m=t.match(/\b(previous|back)\b/)){if(ready('channel',900)){said();channel(-1,'voice')}return true}
- if(m=t.match(/\b(channel|next)\b/)){if(ready('channel',900)){said();channel(1,'voice')}return true}
+ // Specific phrases first: these ignore focus.
+ const run=f=>{said();if(!f())capVia=null;return true};
+ if(m=t.match(/\b(next\s+(song|track)|skip)\b/))return run(()=>trackStep(1,'voice'));
+ if(m=t.match(/\bprevious\s+(song|track)\b/))return run(()=>trackStep(-1,'voice'));
+ if(m=t.match(/\bprevious\s+channel\b/))return run(()=>tvStep(-1,'voice'));
+ if(m=t.match(/\b(next\s+channel|channel)\b/))return run(()=>tvStep(1,'voice'));
+ // Switch focus.
+ if(m=t.match(/\b(t\.?v\.?|television)(?!\w)/))return run(()=>switchFocus('tv','voice'));
+ if(m=t.match(/\b(music|jukebox)\b/))return run(()=>switchFocus('jukebox','voice'));
+ if(m=t.match(/\bswitch\b/))return run(()=>switchFocus('toggle','voice'));
+ // Generic: whatever has focus.
+ if(m=t.match(/\b(previous|back)\b/))return run(()=>previous('voice'));
+ if(m=t.match(/\bnext\b/))return run(()=>next('voice'));
  return false;
 }
 // ---------- Free-form voice (needs server.js + GEMINI_API_KEY) ----------
@@ -229,6 +270,8 @@ $('voiceBtn').onclick=()=>{
    if(!r.isFinal)continue;done[i]=true;
    if(t.split(/\s+/).length<4&&voiceCmd(t))continue;
    aiCommand(t);continue}
+  // A half-spoken "next" could still become "next song": wait for the rest of the phrase before acting on these words.
+  if(!r.isFinal&&/\b(next|previous|play|music|spooky|switch)$/i.test(t))continue;
   if(voiceCmd(t))done[i]=true}};
  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){setVoice(false);heard.textContent='Microphone blocked. Allow it in the browser, or use the other inputs.'}};
  rec.onend=()=>{if(voiceOn){try{rec.start()}catch(e){}}};
