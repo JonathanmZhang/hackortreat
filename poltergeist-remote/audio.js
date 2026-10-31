@@ -121,6 +121,28 @@ function bite(){const t=T(),n=noise(t,.2),hp=filt('highpass',2500),g=gain(0);n.c
 function shatter(){const t=T();for(let i=0;i<8;i++){const f=rnd(2500,6500),o=osc('sine',f,t+i*.035,.25),g=gain(0);env(g,t+i*.035,.002,.12,.2);o.connect(g);out(g,.5)}
  const n=noise(t,.3),hp=filt('highpass',3500),g=gain(0);n.connect(hp);hp.connect(g);env(g,t,.002,.5,.25);out(g,.3)}
 
+// ---------- Potions ----------
+function plop(){const t=T(),o=osc('sine',340,t,.22);o.frequency.exponentialRampToValueAtTime(120,t+.16);const g=gain(0);env(g,t,.004,.4,.18);o.connect(g);out(g,.5)}
+function stir(){const t=T(),n=noise(t,.28),bp=filt('bandpass',500,3),g=gain(0);bp.frequency.setValueAtTime(350,t);bp.frequency.linearRampToValueAtTime(800,t+.24);n.connect(bp);bp.connect(g);env(g,t,.06,.5,.2);out(g,.4)}
+// A good brew: a warm chord swelling up under a run of bells.
+function brew(){const t=T();[261.6,329.6,392].forEach(f=>{const o=osc('triangle',f,t,1.2),g=gain(0);env(g,t,.15,.14,1);o.connect(g);out(g,.8)});
+ [784,988,1175,1568].forEach((f,i)=>{const o=osc('sine',f,t+.12+i*.07,.7),g=gain(0);env(g,t+.12+i*.07,.01,.16,.6);o.connect(g);out(g,.8)})}
+function puff(){const t=T(),n=noise(t,.7),lp=filt('lowpass',1400,.7),g=gain(0);lp.frequency.setValueAtTime(1800,t);lp.frequency.exponentialRampToValueAtTime(240,t+.6);n.connect(lp);lp.connect(g);env(g,t,.02,.8,.6);out(g,.5)}
+
+// ---------- Dodging ----------
+// A rifle being cocked. Each kind of shot has its own pitch, so you can hear what is coming: high = up, low = down.
+function aim(kind){const t=T(),f={high:1900,low:650,lane:1200}[kind]||1200;[0,.09].forEach((dt,i)=>{const o=osc('square',f*(i?1.3:1),t+dt,.04),g=gain(0);env(g,t+dt,.001,.14,.03);o.connect(g);out(g,.3)})}
+function shot(){const t=T(),n=noise(t,.16),hp=filt('highpass',1500),g=gain(0);n.connect(hp);hp.connect(g);env(g,t,.001,.6,.13);out(g,.8);
+ const o=osc('sine',2600,t,.3);o.frequency.exponentialRampToValueAtTime(500,t+.28);const og=gain(0);env(og,t,.002,.12,.26);o.connect(og);out(og,.4)}
+// A silver bullet connects: a dull thud and a metal ring on top of the scare sting.
+function hit(){sting(false);const t=T();thump(t,.9);const o=osc('triangle',3100,t,.5),g=gain(0);env(g,t,.002,.12,.45);o.connect(g);out(g,.6)}
+function whiz(){const t=T(),o=osc('sine',1500,t,.14);o.frequency.exponentialRampToValueAtTime(800,t+.12);const g=gain(0);env(g,t,.004,.07,.11);o.connect(g);out(g,.3)}
+
+// ---------- Scent Matching ----------
+function sniff(){const t=T();[0,.15].forEach(dt=>{const n=noise(t+dt,.13),bp=filt('bandpass',3200,2),g=gain(0);bp.frequency.setValueAtTime(2200,t+dt);bp.frequency.linearRampToValueAtTime(4200,t+dt+.12);n.connect(bp);bp.connect(g);env(g,t+dt,.05,.3,.07);out(g,.2)})}
+function sick(){const t=T(),o=osc('sawtooth',170,t,.8);o.frequency.linearRampToValueAtTime(240,t+.2);o.frequency.exponentialRampToValueAtTime(55,t+.75);
+ const v=osc('sine',11,t,.8),vg=gain(30);v.connect(vg);vg.connect(o.frequency);const lp=filt('lowpass',800,3),g=gain(0);o.connect(lp);lp.connect(g);env(g,t,.03,.5,.72);out(g,.4)}
+
 // ---------- Start, mute, volume ----------
 function build(){
  ctx=new AC();
@@ -158,6 +180,7 @@ window.Sfx={
  start,heart,
  click:play(click),tv:play(tv),slam:play(slam),chime:play(chime),whoo:play(whoo),
  pluck:play(pluck),spell:play(spell),fizzle:play(fizzle),howl:play(howl),bite:play(bite),shatter:play(shatter),
+ plop:play(plop),stir:play(stir),brew:play(brew),puff:play(puff),aim:play(aim),shot:play(shot),hit:play(hit),whiz:play(whiz),sniff:play(sniff),sick:play(sick),
  scare:play(()=>{sting(false);bump=Math.min(.6,bump+.25);if(Math.random()<.5)gasp();else scream(.7,650)}),
  flee:play(()=>{sting(true);scream(1.5,560);bump=Math.min(.6,bump+.3)})
 };

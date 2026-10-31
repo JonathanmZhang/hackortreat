@@ -80,7 +80,7 @@ function renderHist(){
 function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist();setCaption(capVia,'fired',{text,src});capVia=null}
 // note: feedback that is not a command (a failed grab, a garlic wearer). Shown in the log and caption, not saved in the history.
 function note(text,src){log(text);setCaption(capVia,'fired',{text,src:src||'game'});capVia=null}
-function award(n){score+=n;$('score').textContent=score}
+function award(n){score=Math.max(0,score+n);$('score').textContent=score}
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
@@ -91,8 +91,11 @@ function slam(src){Room.slam();Sfx.slam();Academy.on('act');Academy.on('door');
 function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);Academy.on('act');Academy.on(blindsOn?'blinds':'blindsOpen');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
 $('bB').onclick=()=>blinds('button');
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>{if(ready('channel',900))channel(1,'button')};$('bD').onclick=()=>slam('button');
-$('bP').onclick=()=>{if(ready('power',1400))Monster.use('button')};$('bG').onclick=()=>Monster.grab(null,'button');
-addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight'&&ready('channel',900))channel(1,'keyboard');if(e.key==='ArrowLeft'&&ready('channel',900))channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key==='g'||e.key==='G')Monster.grab(null,'keyboard');if((e.key==='p'||e.key==='P')&&ready('power',1400))Monster.use('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+$('bP').onclick=()=>{if(ready('power',1400))Monster.use('button')};
+addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;if(!isGhost()){Classes.key(e);return}capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight'&&ready('channel',900))channel(1,'keyboard');if(e.key==='ArrowLeft'&&ready('channel',900))channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key==='g'||e.key==='G')Monster.grab('keyboard');if((e.key==='p'||e.key==='P')&&ready('power',1400))Monster.use('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+
+// Hands-free input (camera, face, voice, AI voice) is the ghost's mode, because the ghost is the one monster that can't touch anything.
+const isGhost=()=>document.body.dataset.species==='ghost';
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -112,10 +115,15 @@ function haunt(n,by){if(!(n>0))return false;const r=Room.scare(n);if(!r.hit)retu
 function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
 function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
 Room.on=(type,i)=>{const n=ROOMS[i];
- if(type==='arrive'){here[i]=true;tabs.children[i].classList.add('has');ringMini(i);Sfx.chime();Sfx.whoo(i===cur);showAlert(i===cur?'Someone just walked in. Haunt them!':'Someone walked into the '+n+'!',i===cur?null:i)}
- else{here[i]=false;tabs.children[i].classList.remove('has');if(type==='leave')showAlert('They left the '+n+' unscared.',null)}
- sync()};
+ if(type==='arrive'){here[i]=true;tabs.children[i].classList.add('has');ringMini(i);Sfx.chime();Sfx.whoo(i===cur);showAlert(i===cur?(isGhost()?'Someone just walked in. Haunt them!':'Someone just walked in. Follow your nose.'):'Someone walked into the '+n+'!',i===cur?null:i)}
+ else{here[i]=false;tabs.children[i].classList.remove('has');if(type==='leave')showAlert(isGhost()?'They left the '+n+' unscared.':'They left the '+n+'.',null)}
+ Classes.on(type,i);sync()};
 paintTabs();sync();
+// A new class starts from a clean house: nothing carries over from the last one.
+function resetGame(){planId++;hideAlert();cool={};score=0;$('score').textContent=0;
+ RS.forEach((r,i)=>RS[i]={lights:true,ch:0,blinds:false});cur=0;lightsOn=true;ch=0;blindsOn=false;plugOn=true;$('plugState').textContent='ON';
+ Room.setRoom(0);Room.lights(true);Room.tv(CH[0]);Room.blinds(false);paintTabs();
+ here.fill(false);[...tabs.children].forEach(b=>b.classList.remove('has'));sync()}
 
 // Every input (hand, voice, head/face) shares one cooldown per action: 'lights', 'channel', 'slam', 'room', 'power', 'grab', 'blinds'.
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -123,6 +131,7 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 // ---------- Hand gestures ----------
 const hist=[];
 function detect(lm){
+ if(!isGhost())return;
  const scale=dist(lm[0],lm[9])||.1;
  const pinch=dist(lm[4],lm[8])/scale<0.28;
  const curled=[[8,6],[12,10],[16,14],[20,18]].every(([t,p])=>dist(lm[t],lm[0])<dist(lm[p],lm[0]));
@@ -132,7 +141,7 @@ function detect(lm){
  if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500)){capVia='peace';nextRoom('hand')}else setCaption('peace','cooldown');return}
  const thumb=curled&&dist(lm[4],lm[0])/scale>1.2&&lm[4].y<lm[3].y&&lm[3].y<lm[2].y&&lm[4].y<lm[5].y-scale*.4;
  if(thumb){if(ready('power',1400)){capVia='thumb';Monster.use('hand')}else setCaption('thumb','cooldown');return}
- if(!pinch&&ext(8,6)&&!ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('grab',900)){capVia='point';Monster.grab(null,'hand')}else setCaption('point','cooldown');return}
+ if(!pinch&&ext(8,6)&&!ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('grab',900)){capVia='point';Monster.grab('hand')}else setCaption('point','cooldown');return}
  if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
  if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
  if(hist.length>3){const dx=x-hist[0].x;
@@ -144,6 +153,7 @@ function detect(lm){
 const FACE={nod:0.09,tilt:18,mouth:0.12,turn:0.3,hold:350};
 const pitchHist=[];let tiltArmed=true,tiltSince=0,mouthSince=0,yawArmed=true,yawSince=0;
 function detectFace(lm){
+ if(!isGhost())return;
  const now=performance.now(),faceH=dist(lm[10],lm[152])||.1;
  // Open mouth (hold briefly) -> slam the door
  if(dist(lm[13],lm[14])/faceH>FACE.mouth){
@@ -188,6 +198,7 @@ function detectFace(lm){
 // ---------- Voice (Web Speech API; Chrome / Edge) ----------
 // Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
 function voiceCmd(t){
+ if(!isGhost())return false;
  t=t.toLowerCase();
  let m;const said=()=>capVia='"'+m[0][0].toUpperCase()+m[0].slice(1)+'"';
  // goRoom skips act() when already in that room, so clear capVia here.
@@ -196,7 +207,7 @@ function voiceCmd(t){
  if(m=t.match(/\bliving\b/))return go(0);
  if(m=t.match(/\bbed(room)?\b/))return go(1);
  if(m=t.match(/\bkitchen\b/))return go(2);
- if(m=t.match(/\b(grab|take|snatch|summon)\b/)){if(ready('grab',900)){said();Monster.grab(Monster.itemIn(t),'voice')}return true}
+ if(m=t.match(/\b(grab|take|snatch|summon)\b/)){if(ready('grab',900)){said();Monster.grab('voice')}return true}
  if(m=t.match(/\b(bite|cast|spell|hex|curse|howl|wail|power)\b/)){if(ready('power',1400)){said();Monster.use('voice')}return true}
  if(m=t.match(/\b(slam|slammed|slams|door)\b/)){if(ready('slam',1500)){said();slam('voice')}return true}
  if(m=t.match(/\b(lights?|flick)\b/)){if(ready('lights',1200)){said();lights('voice')}return true}
@@ -218,25 +229,26 @@ function setChannel(n,src){if(n-1!==ch)channel(n-1-ch,src)}
 async function runPlan(actions,src){
  const id=++planId; // a newer spoken plan cancels an older one that is still running
  for(const a of actions){
-  if(id!==planId)return;
+  if(id!==planId||!isGhost())return;
   if(a.type==='wait'){await sleep(a.seconds*1000);continue}
   if(a.type==='lights')setLights(a.on,src);
   else if(a.type==='channel')setChannel(a.channel,src);
   else if(a.type==='door')slam(src);
   else if(a.type==='room')goRoom(a.room-1,src);
   else if(a.type==='power')Monster.use(src);
-  else if(a.type==='grab')Monster.grab(a.item||null,src);
   await sleep(400)}}
 async function aiCommand(t){
+ if(!isGhost())return;
  const heard=$('heard');heard.textContent='Thinking: "'+t+'"';
  try{
   const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({text:t,state:{room:cur+1,lights:lightsOn,channel:ch+1}})});
   if(!r.ok)throw new Error('http '+r.status);
   const p=await r.json();
+  if(!isGhost())return; // the monster changed while the request was out
   if(!Array.isArray(p.actions)||!p.actions.length){heard.textContent=p.message?'Ghost: '+p.message:'Heard: '+t+' (not a room command)';return}
   heard.textContent='Ghost: '+(p.message||'On it.');runPlan(p.actions,'voice AI')
- }catch(e){heard.textContent='AI unavailable, trying keywords. Heard: '+t;voiceCmd(t)}}
+ }catch(e){if(!isGhost())return;heard.textContent='AI unavailable, trying keywords. Heard: '+t;voiceCmd(t)}}
 
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,voiceOn=false;
@@ -263,7 +275,8 @@ $('voiceBtn').onclick=()=>{
 };
 
 // ---------- Camera, drawing, loop ----------
-let handLm=null,faceLm=null;
+// camGen: each start or stop gets a new number, so a loop or a slow camera start from an earlier one can tell it is stale.
+let handLm=null,faceLm=null,hands=null,face=null,camGen=0;
 function dot(ctx,p,r){ctx.beginPath();ctx.arc(p.x*640,p.y*480,r,0,7);ctx.fill()}
 function render(){const ctx=$('c').getContext('2d');ctx.clearRect(0,0,640,480);
  if(handLm){ctx.fillStyle='#19f0ff';handLm.forEach(p=>dot(ctx,p,4))}
@@ -272,29 +285,43 @@ function render(){const ctx=$('c').getContext('2d');ctx.clearRect(0,0,640,480);
 
 $('startBtn').onclick=async()=>{
  Sfx.start();
- const msg=$('camMsg');msg.textContent='Starting camera…';
+ if(!isGhost())return;
+ const msg=$('camMsg'),gen=++camGen;msg.textContent='Starting camera…';
  try{
-  const v=$('v');v.srcObject=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});await v.play();
+  const v=$('v'),stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+  if(gen!==camGen){stream.getTracks().forEach(t=>t.stop());return}
+  v.srcObject=stream;await v.play();if(gen!==camGen)return;
   const base='https://cdn.jsdelivr.net/npm/@mediapipe/';
-  const hands=new Hands({locateFile:f=>base+'hands@0.4.1675469240/'+f});
+  if(!hands){hands=new Hands({locateFile:f=>base+'hands@0.4.1675469240/'+f});
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.5});
-  hands.onResults(r=>{handLm=r.multiHandLandmarks&&r.multiHandLandmarks[0]||null;if(handLm){Room.ghost(1-handLm[9].x,handLm[9].y);detect(handLm)}render()});
-  let face=null;
+  hands.onResults(r=>{if(!camOn)return;handLm=r.multiHandLandmarks&&r.multiHandLandmarks[0]||null;if(handLm){Room.ghost(1-handLm[9].x,handLm[9].y);detect(handLm)}render()});
   if(typeof FaceMesh!=='undefined'){
    face=new FaceMesh({locateFile:f=>base+'face_mesh@0.4.1633559619/'+f});
    face.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.6,minTrackingConfidence:.5});
-   face.onResults(r=>{faceLm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0]||null;if(faceLm){if(!handLm)Room.ghost(1-faceLm[1].x,faceLm[1].y);detectFace(faceLm)}render()});
-  }else log('Face model script was blocked. Hand, voice, buttons and keys still work.');
+   face.onResults(r=>{if(!camOn)return;faceLm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0]||null;if(faceLm){if(!handLm)Room.ghost(1-faceLm[1].x,faceLm[1].y);detectFace(faceLm)}render()});
+  }else log('Face model script was blocked. Hand, voice, buttons and keys still work.');}
   msg.textContent='Loading models…';
   const loop=async()=>{
+   if(gen!==camGen)return;
    if(v.readyState>=2){
     await hands.send({image:v});
+    if(gen!==camGen)return;
     if(face&&$('faceOn').checked){try{await face.send({image:v})}catch(e){face=null;faceLm=null;log('Face model could not load. Hand, voice, buttons and keys still work.')}}
     else if(faceLm){faceLm=null;render()}
+    if(gen!==camGen)return;
    }
    captionTick();
    requestAnimationFrame(loop)};camOn=true;captionTick();loop();
   $('startBtn').style.display='none';
- }catch(e){msg.textContent='Camera or hand model could not load ('+(e.name||'error')+'). Use voice, the buttons or keys instead.'}
+ }catch(e){if(gen!==camGen)return;msg.textContent='Camera or hand model could not load ('+(e.name||'error')+'). Use voice, the buttons or keys instead.'}
 };
+// Turns everything hands-free off and hands the camera and microphone back. They need a fresh click to start again.
+function stopHandsFree(){
+ camGen++;camOn=false;planId++;
+ const v=$('v');if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
+ handLm=faceLm=null;render();hist.length=0;pitchHist.length=0;mouthSince=tiltSince=yawSince=0;
+ clearTimeout(capTimer);capUntil=0;capVia=capCand=capKey=capHeld=null;capRun=capGap=0;setCaption(null,'idle');
+ $('startBtn').style.display='';$('camMsg').textContent='Camera is off. Start it, or use voice or the buttons below.';
+ if(rec){rec.onstart=rec.onresult=rec.onerror=rec.onend=null;try{rec.abort()}catch(e){}rec=null}
+ setVoice(false);$('heard').textContent='Voice is off.'}
 if(typeof Hands==='undefined')$('camMsg').textContent='Hand model script was blocked. Use voice, the buttons or keys instead.';

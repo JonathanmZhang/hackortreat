@@ -4,7 +4,8 @@ const host=document.getElementById('room');
 let R;
 try{R=new THREE.WebGLRenderer({antialias:true})}catch(e){
  host.insertAdjacentHTML('beforeend','<p style="padding:16px;color:#9a8fb0">3D view needs WebGL. Gestures still work.</p>');
- window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},blinds(){},skin(){},scare(){return{hit:false}},setMonster(){},visitor(){return null},bite(){return null},hover(){return null},ring(){},hold(){},cast(){},mirrorNear(){return false},mirrorFlash(){},moon(){}};return}
+ window.Room={scare(){return{hit:false}},visitor(){return null},visitorAt(){return null},bite(){return null},pick(){return null},pickVisitor(){return false},cauldronXY(){return{x:0,y:0}},muzzle(){return{x:0,y:0,z:0}},mirrorNear(){return false}};
+ ['lights','tv','slam','ghost','setRoom','blinds','skin','setMonster','ring','hold','pour','stew','glow','flash','smoke','shelf','candle','props','view','arena','lanes','place','hunter','aim','streak','shake','mirrorFlash','moon','setVisitors','setGarlic','extend','linger','startle','resetClass'].forEach(k=>window.Room[k]=()=>{});return}
 const W=()=>host.clientWidth||640,H=()=>host.clientHeight||400;
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(W(),H(),false);
 R.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
@@ -16,7 +17,7 @@ const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.
 const add=(g,m,x,y,z,p)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);(p||S).add(o);return o};
 const bx=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
 const PL=(c,i,d,x,y,z)=>{const l=new THREE.PointLight(c,i,d);l.position.set(x,y,z);S.add(l);return l};
-const flick=[];
+const flick=[],calm=matchMedia('(prefers-reduced-motion:reduce)'); // reduced motion: ambience stands still, no camera shake or sway
 
 // lights
 const amb=new THREE.AmbientLight(0x6a5a9a,.7);S.add(amb);
@@ -82,9 +83,9 @@ add(bx(.26,.12,.2),bone,-1.9,.93,-2.2);
 [-.09,.09].forEach(x=>add(new THREE.SphereGeometry(.06,8,6),new THREE.MeshBasicMaterial({color:0x000000}),-1.9+x,1.18,-2.07));
 
 // candles
-const flames=[];
+const flames=[],candles=[];
 [[1.6,.5],[1.85,.8],[2.1,.35]].forEach(c=>{
- add(new THREE.CylinderGeometry(.07,.07,c[1],10),M(0xe9dfc8),c[0],.9+c[1]/2,-2.3);
+ candles.push(add(new THREE.CylinderGeometry(.07,.07,c[1],10),M(0xe9dfc8),c[0],.9+c[1]/2,-2.3));
  const f=add(new THREE.SphereGeometry(.05,8,6),new THREE.MeshBasicMaterial({color:0xffc56b}),c[0],.95+c[1],-2.3);
  f.scale.y=1.7;flames.push(f)});
 const candleL=PL(0xffa84d,.8,6,1.85,1.9,-2.0);candleL.userData.b=.8;flick.push(candleL);
@@ -105,7 +106,7 @@ function pumpkin(x,z,s,ry){
  [-.2,.2].forEach(ex=>add(new THREE.CircleGeometry(.1,3),fm,ex,.52,.54,g));
  add(new THREE.CircleGeometry(.24,12,Math.PI,Math.PI),fm,0,.34,.54,g);
  const l=new THREE.PointLight(0xff8a2b,.8,5);l.position.set(0,.5,.8);l.userData.b=.8;g.add(l);flick.push(l);return g}
-const pumpA=pumpkin(3.6,1.4,1.3,-.5);pumpkin(-1.6,2.0,.8,.35);pumpkin(-2.4,-1.3,.7,.5);
+pumpkin(3.6,1.4,1.3,-.5);const pumpB=pumpkin(-1.6,2.0,.8,.35),pumpC=pumpkin(-2.4,-1.3,.7,.5);
 
 // mirror on the back wall: a vampire casts no reflection, so it keeps away from it
 const mirM=(()=>{const c=document.createElement('canvas');c.width=64;c.height=128;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,64,128);
@@ -121,7 +122,7 @@ const cm=M(0x15121a,{metalness:.5,roughness:.5,side:2});
 add(new THREE.SphereGeometry(.7,20,14,0,Math.PI*2,Math.PI*.38,Math.PI*.62),cm,-3.3,.75,1.2);
 const rim=add(new THREE.TorusGeometry(.64,.05,8,24),cm,-3.3,1.01,1.2);rim.rotation.x=Math.PI/2;
 const liq=add(new THREE.CircleGeometry(.6,20),new THREE.MeshBasicMaterial({color:0x7df3c6}),-3.3,.95,1.2);liq.rotation.x=-Math.PI/2;
-PL(0x5dffc0,.9,6,-3.3,1.6,1.4);
+const cauL=PL(0x5dffc0,.9,6,-3.3,1.6,1.4);
 const bubbles=[0,1,2,3].map(i=>add(new THREE.SphereGeometry(.07,8,6),new THREE.MeshBasicMaterial({color:0xb9ffe6}),-3.3+(i-1.5)*.18,1,1.2));
 
 // cobwebs in the top corners
@@ -217,23 +218,38 @@ function setMonster(name,hex,acc){
  else if(acc==='Sunglasses'){const k=new THREE.MeshBasicMaterial({color:0x05030a});
   [-.11,.11].forEach(x=>add(bx(.16,.09,.03),k,x,h.eye,h.z+.02,accG));add(bx(.1,.02,.03),k,0,h.eye+.02,h.z+.02,accG)}}
 gh.position.set(1.6,3.3,.5);
-const gt={x:1.6,y:3.3};let lastHand=-9999;
+const gt={x:1.6,y:3.3,z:.5};let lastHand=-9999,pinned=false,gk=.08,bobA=.12,poseY=1; // pinned: a class decides where the monster is, so it stops wandering
 
-// ---------- Props a witch can grab, and helpers that compare the monster with things on screen ----------
-const PROPS={skull:{o:skull,y:0},candle:{o:flames[1],y:0},pumpkin:{o:pumpA,y:.5},potion:{o:liq,y:.1},spider:{o:sp,y:0}};
-const PC={skull:0xe8e2cf,candle:0xffc56b,pumpkin:0xff8a2b,spider:0xb28cff,potion:0x7df3c6};
-const _v=new THREE.Vector3(),_a=new THREE.Vector3(),_b=new THREE.Vector3();
+// ---------- Potions: extra props, the shelf and cauldron effects (only shown in the witch's class) ----------
+const witchG=new THREE.Group();witchG.visible=false;S.add(witchG);
+const flask=new THREE.Group();flask.position.set(-1.42,.9,-2.25);witchG.add(flask);
+ball(.17,M(0x7df3c6,{emissive:0x2a8f70}),0,.17,0,flask);cyl(.05,.07,.18,M(0xcfe9ff),0,.4,0,flask,8);
+const toad=new THREE.Group();toad.position.set(1.3,.9,-2.05);toad.scale.setScalar(.85);witchG.add(toad);
+cyl(.08,.11,.34,M(0xe8e2cf),0,.17,0,toad,8);
+add(new THREE.SphereGeometry(.28,14,8,0,Math.PI*2,0,Math.PI/2),M(0xd8324a,{emissive:0x5a1020}),0,.32,0,toad);
+const shelfY=2.86,shelfG=new THREE.Group();witchG.add(shelfG);
+add(bx(3.1,.08,.3),M(0x3a2a22),.2,shelfY,-2.85,witchG);
+const PROPS={skull:{o:skull,y:0,r:.42},candle:{o:flames[1],y:-.2,r:.55},pumpkin:{o:pumpC,y:.3,r:.5},potion:{o:flask,y:.22,r:.36},spider:{o:sp,y:0,r:.45},toadstool:{o:toad,y:.25,r:.32},cauldron:{o:rim,y:0,r:.85}};
+const PC={skull:0xe8e2cf,candle:0xffc56b,pumpkin:0xff8a2b,spider:0xb28cff,potion:0x7df3c6,toadstool:0xff4a5e};
+const LIQ=0x7df3c6,BUB=0xb9ffe6;
+const _v=new THREE.Vector3(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Color();
 const asp=()=>W()/H();
 const nd=(v,o)=>o.copy(v).project(C); // screen position (-1..1)
 const sdist=(a,b)=>Math.hypot((a.x-b.x)*asp(),a.y-b.y);
 function propPos(k){const p=PROPS[k];p.o.getWorldPosition(_v);_v.y+=p.y;return _v}
-function hover(reach){nd(gh.position,_a);let best=null,bd=reach||.3;
- for(const k in PROPS){nd(propPos(k),_b);const d=sdist(_a,_b);if(d<bd){bd=d;best=k}}return best}
+// Clicks are raycast against invisible spheres, so small props like the spider are still easy to hit.
+const rc=new THREE.Raycaster(),_ndc=new THREE.Vector2();
+const proxies=Object.keys(PROPS).map(k=>{const m=new THREE.Mesh(new THREE.SphereGeometry(PROPS[k].r,10,8),new THREE.MeshBasicMaterial());m.visible=false;m.userData.k=k;S.add(m);return m});
+function aimRay(x,y){const r=R.domElement.getBoundingClientRect();_ndc.set((x-r.left)/r.width*2-1,1-(y-r.top)/r.height*2);C.updateMatrixWorld();rc.setFromCamera(_ndc,C)}
+function pick(x,y){if(!witchG.visible)return null;aimRay(x,y);
+ proxies.forEach(m=>{m.position.copy(propPos(m.userData.k));m.updateMatrixWorld()});
+ const h=rc.intersectObjects(proxies)[0];return h?h.object.userData.k:null}
+function cauldronXY(){const r=R.domElement.getBoundingClientRect();nd(propPos('cauldron'),_b);return{x:r.left+(_b.x+1)/2*r.width,y:r.top+(1-_b.y)/2*r.height}}
 const ringM=new THREE.MeshBasicMaterial({color:0xff2bd6,transparent:true,opacity:.9,depthTest:false,fog:false});
 const hoverRing=new THREE.Mesh(new THREE.RingGeometry(.3,.36,32),ringM);hoverRing.visible=false;hoverRing.renderOrder=10;S.add(hoverRing);
 function ring(k,p){if(!k){hoverRing.visible=false;return}
  hoverRing.position.copy(propPos(k));hoverRing.lookAt(C.position);hoverRing.scale.setScalar(1.5-.6*(p||0));ringM.opacity=.4+.5*(p||0);hoverRing.visible=true}
-// Held ingredients orbit the witch; a cast sends them off as a bolt.
+// The held ingredient orbits the witch; pouring sends it into the cauldron.
 const orbs=[],orbG=new THREE.SphereGeometry(.11,10,8),spellL=PL(0xffffff,0,8,0,2,0);
 let spellCol=0xffffff,flashK=0,mirK=0,moonK=0;
 function hold(keys){
@@ -241,9 +257,8 @@ function hold(keys){
  keys.forEach(k=>{if(orbs.some(o=>o.k===k&&o.mode!=='bolt'))return;
   const m=new THREE.Mesh(orbG,new THREE.MeshBasicMaterial({color:PC[k]}));m.position.copy(propPos(k));S.add(m);
   orbs.push({k,m,mode:'fly',p:0,from:m.position.clone()})})}
-function cast(col){const v=vis[cur];
- const to=v.m?new THREE.Vector3(v.m.position.x,v.m.position.y+1.3,v.m.position.z):new THREE.Vector3(0,2.2,-1);
- spellCol=col;orbs.forEach(o=>{if(o.mode==='bolt')return;o.mode='bolt';o.p=0;o.from=o.m.position.clone();o.to=to;o.m.material.color.setHex(col)})}
+function pour(){const to=propPos('cauldron').clone();
+ orbs.forEach(o=>{if(o.mode==='bolt')return;spellCol=PC[o.k];o.mode='bolt';o.p=0;o.from=o.m.position.clone();o.to=to})}
 function orbsTick(t){
  orbs.filter(o=>o.mode!=='bolt').forEach((o,i)=>{const m=o.m,
   tx=gh.position.x+Math.cos(t*2.2+i*Math.PI)*.85,ty=gh.position.y+.25+Math.sin(t*3+i)*.1,tz=gh.position.z+.2+Math.sin(t*2.2+i*Math.PI)*.45;
@@ -251,8 +266,57 @@ function orbsTick(t){
    m.position.set(o.from.x+(tx-o.from.x)*e,o.from.y+(ty-o.from.y)*e+Math.sin(e*Math.PI)*.5,o.from.z+(tz-o.from.z)*e);if(e>=1)o.mode='orbit'}
   else m.position.set(tx,ty,tz)});
  for(let i=orbs.length-1;i>=0;i--){const o=orbs[i];if(o.mode!=='bolt')continue;
-  o.p+=.06;o.m.position.lerpVectors(o.from,o.to,Math.min(1,o.p));o.m.scale.setScalar(1.6+Math.sin(o.p*20)*.3);
-  if(o.p>=1){flashK=1;spellL.position.copy(o.to);spellL.color.setHex(spellCol);S.remove(o.m);orbs.splice(i,1)}}}
+  o.p+=.06;o.m.position.lerpVectors(o.from,o.to,Math.min(1,o.p));
+  if(o.p>=1){flashK=.6;spellL.position.copy(o.to);spellL.color.setHex(spellCol);S.remove(o.m);orbs.splice(i,1)}}}
+// keys = what is in the pot: the liquid and its light become the average of their colours.
+function stew(keys){const h=keys.length?keys.reduce((c,k,i)=>c.lerp(_c.setHex(PC[k]),1/(i+1)),new THREE.Color(PC[keys[0]])).getHex():LIQ;
+ liq.material.color.setHex(h);cauL.color.setHex(h);bubbles.forEach(b=>b.material.color.setHex(keys.length?h:BUB))}
+function glow(hex){spellL.position.copy(propPos('cauldron'));spellL.position.y+=.5;spellL.color.setHex(hex);liq.material.color.setHex(hex);cauL.color.setHex(hex);flashK=1.5}
+// A flash where the monster is (a good bite, a silver hit).
+function flash(hex){spellL.position.copy(gh.position);spellL.color.setHex(hex);flashK=1.2}
+function shelf(hexes){while(shelfG.children.length)shelfG.remove(shelfG.children[0]);
+ hexes.slice(-10).forEach((h,i)=>{const b=new THREE.Group(),m=new THREE.MeshBasicMaterial({color:h});b.position.set(-1.1+i*.29,shelfY+.04,-2.82);
+  add(new THREE.SphereGeometry(.1,10,8),m,0,.1,0,b);add(new THREE.CylinderGeometry(.03,.04,.1,6),m,0,.23,0,b);shelfG.add(b)})}
+// frac = how much of the middle candle is left (the rush-order timer).
+function candle(frac){const c=candles[1],f=flames[1];c.scale.y=Math.max(.05,frac);c.position.y=.9+.4*c.scale.y;f.position.y=.95+.8*c.scale.y}
+const puffs=[],puffG=new THREE.SphereGeometry(.22,8,6);
+function smoke(){const o=propPos('cauldron').clone();for(let i=0;i<9;i++){const m=new THREE.Mesh(puffG,new THREE.MeshBasicMaterial({color:0x6a6a78,transparent:true,opacity:.8,depthWrite:false}));
+  m.position.set(o.x+(Math.random()-.5)*.8,o.y+Math.random()*.2,o.z+(Math.random()-.5)*.6);S.add(m);puffs.push({m,p:-i*.04})}}
+
+// ---------- Dodging: lanes on the floor, hunters at the window and door, aim lines and silver streaks ----------
+const laneG=new THREE.Group();laneG.visible=false;S.add(laneG);
+const laneM=[-2.2,0,2.2].map(x=>{const m=add(new THREE.PlaneGeometry(1.5,2.6),new THREE.MeshBasicMaterial({color:0x19f0ff,transparent:true,opacity:.1,fog:false,depthWrite:false}),x,.03,.4,laneG);m.rotation.x=-Math.PI/2;return m});
+function lanes(me,hot){laneM.forEach((m,i)=>{const h=(hot||[]).includes(i);m.material.color.setHex(h?0xff3030:i===me?0xb6ff2a:0x19f0ff);m.material.opacity=h?.45:i===me?.25:.1})}
+const hunterK=new THREE.MeshBasicMaterial({color:0x05030a}),glintM=new THREE.MeshBasicMaterial({color:0xff2020,fog:false});
+// body = how far down the silhouette goes: at the window only head and shoulders show.
+function hunterAt(x,y,z,body){const g=new THREE.Group();g.position.set(x,y,z);g.visible=false;S.add(g);
+ ball(.2,hunterK,0,.55,0,g);cyl(.34,.34,.03,hunterK,0,.72,0,g,14);cyl(.17,.2,.2,hunterK,0,.82,0,g,12); // head and hat
+ cyl(.28,.32,body,hunterK,0,.35-body/2,0,g,12);
+ const rifle=add(bx(.07,.07,.95),hunterK,.16,.2,.42,g);rifle.rotation.x=.08;
+ const glint=add(new THREE.SphereGeometry(.09,10,8),glintM,.16,.16,.92,g);
+ return{g,glint}}
+const HUNT={window:hunterAt(-2.6,2.5,-2.82,.45),door:hunterAt(3.05,1.35,-2.55,1.35)};
+const hunter=list=>{for(const k in HUNT)HUNT[k].g.visible=list.includes(k)};
+function muzzle(k){const h=HUNT[k];h.g.updateMatrixWorld();return h.glint.getWorldPosition(new THREE.Vector3())}
+const beamG=bx(1,1,1),aimM=new THREE.MeshBasicMaterial({color:0xff2020,transparent:true,opacity:.75,fog:false,depthTest:false});
+function beam(m,a,b,th){m.position.set((a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2);m.lookAt(b.x,b.y,b.z);m.scale.set(th,th,Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z))}
+const aims=[0,1].map(()=>{const m=new THREE.Mesh(beamG,aimM);m.visible=false;m.renderOrder=8;S.add(m);return m});
+function aim(list){aims.forEach((m,i)=>{const l=list[i];m.visible=!!l;if(l)beam(m,l.a,l.b,.035)})}
+const streaks=[],streakL=PL(0xdfe8ff,0,7,0,2,0);
+function streak(a,b,ms){const m=new THREE.Mesh(beamG,new THREE.MeshBasicMaterial({color:0xf2f8ff,transparent:true,fog:false,depthTest:false}));m.renderOrder=9;S.add(m);
+ streaks.push({m,a:new THREE.Vector3(a.x,a.y,a.z),b:new THREE.Vector3(b.x,b.y,b.z),t0:performance.now(),ms})}
+function fxTick(t){
+ const now=performance.now();
+ for(let i=streaks.length-1;i>=0;i--){const s=streaks[i],p=(now-s.t0)/s.ms;
+  if(p>=1){S.remove(s.m);s.m.material.dispose();streaks.splice(i,1);continue}
+  // Reduced motion: the whole path shows at once and fades, instead of a shape flying across the screen.
+  if(calm.matches){beam(s.m,s.a,s.b,.07);s.m.material.opacity=1-p;continue}
+  _a.lerpVectors(s.a,s.b,p);_b.lerpVectors(s.a,s.b,Math.max(0,p-.28));beam(s.m,_b,_a,.07);streakL.position.copy(_a)}
+ streakL.intensity=streaks.length&&!calm.matches?2.4:0;
+ for(let i=puffs.length-1;i>=0;i--){const q=puffs[i];q.p+=.014;if(q.p<0)continue;
+  if(q.p>=1){S.remove(q.m);q.m.material.dispose();puffs.splice(i,1);continue}
+  if(!calm.matches){q.m.position.y+=.022;q.m.scale.setScalar(1+q.p*2.2)}q.m.material.opacity=.8*(1-q.p)}
+ const pulse=calm.matches?1:.75+.25*Math.sin(t*22);aimM.opacity=.75*pulse;for(const k in HUNT)HUNT[k].glint.scale.setScalar(.8+pulse*.7)}
 function mirrorNear(){nd(gh.position,_a);nd(MIRP,_b);return sdist(_a,_b)<.3}
 
 // rooms: same layout, recoloured, with different furniture
@@ -273,7 +337,7 @@ const OBST={
  rooms:[[box(0,.95,2.9,1.1)],[box(0,.25,2.4,2.95)],[box(-4.2,-2.3,1.1,1),box(0,.9,2,1.2)]]};
 
 // visitors: people wander in through the door, one per room at a time
-let cur=0;
+let cur=0,visOn=false,firstT=0,viewX=0,arenaOn=false;
 const vis=[{m:null},{m:null},{m:null}],DOORP=new THREE.Vector3(3.05,0,-2.3),ENTRY=new THREE.Vector3(3.4,0,-1.2),SAFE={x:2.6,z:.5};
 
 // walkability: one grid per room (each visitor uses its own room's), built once. A cell is walkable if a visitor can reach it from ENTRY.
@@ -334,10 +398,11 @@ function person(){
  const gm=M(0xf4f0e0,{emissive:0x555544});
  for(let i=0;i<9;i++){const a=i/9*Math.PI*2;add(new THREE.SphereGeometry(.05,8,6),gm,Math.sin(a)*.27,0,Math.cos(a)*.27,garlic)}
  add(new THREE.SphereGeometry(.09,8,6),gm,0,-.1,.3,garlic).scale.y=1.3;
+ const hitBox=add(new THREE.CylinderGeometry(.5,.5,2.1,8),new THREE.MeshBasicMaterial(),0,1.05,0,g);hitBox.visible=false; // what a click on a visitor raycasts against
  const fangs=new THREE.Group();fangs.visible=false;g.add(fangs);
  [-.05,.05].forEach(x=>{const f=add(new THREE.ConeGeometry(.02,.07,5),M(0xffffff),x,1.55,.2,fangs);f.rotation.x=Math.PI});
  [-.07,.07].forEach(x=>add(new THREE.SphereGeometry(.03,6,4),new THREE.MeshBasicMaterial({color:0xff2b4a}),x,1.66,.19,fangs));
- g.userData={l1,l2,bub,bc,bt,body,head,garlic,fangs};S.add(g);return g}
+ g.userData={l1,l2,bub,bc,bt,body,head,garlic,fangs,hitBox};S.add(g);return g}
 function makeVamp(m){const u=m.userData;u.head.material=M(0xe8e0f0);u.body.material=M(0x2a1030);u.fangs.visible=true}
 function say(v,t){const u=v.m.userData,x=u.bc.getContext('2d');x.clearRect(0,0,128,48);x.fillStyle='#fff';x.fillRect(0,0,128,40);
  x.fillStyle='#000';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText(t,64,28);u.bt.needsUpdate=true;u.bub.visible=true;v.say=performance.now()+1300}
@@ -363,39 +428,52 @@ function visitors(t){
   if(leaving&&v.exit!==v.state)setExit(v,i);
   // Safety net: paths stay clear, so this only fires if a visitor was somehow put inside something.
   if(!free(i,p.x,p.z,VR-.1)){const q=cellXZ(nearest(i,p.x,p.z));p.x=q.x;p.z=q.z;v.entering=false;if(leaving)setExit(v,i);else setWP(v,i)}
-  const q=v.path[v.pi],dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz);
-  if(d<=spd){p.x=q.x;p.z=q.z;v.entering=false;
+  const q=v.path[v.pi],dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz),stay=!leaving&&now<(v.stay||0); // stay: held in place while a vampire breathes them in
+  if(stay){}
+  else if(d<=spd){p.x=q.x;p.z=q.z;v.entering=false;
    if(++v.pi>=v.path.length){if(leaving){removeV(i,v.state==='flee'?'fled':v.state==='turned'?'turned':'leave');return}setWP(v,i)}}
   else{p.x+=dx/d*spd;p.z+=dz/d*spd;m.rotation.y=Math.atan2(dx,dz)}
   v.vy-=.012;m.position.y=Math.max(0,m.position.y+v.vy);if(m.position.y===0)v.vy=0;
-  const w=Math.sin(t*(v.state==='flee'?18:8))*.5;u.l1.rotation.x=w;u.l2.rotation.x=-w;
+  const w=stay?0:Math.sin(t*(v.state==='flee'?18:8))*.5;u.l1.rotation.x=w;u.l2.rotation.x=-w;
   if(u.bub.visible&&now>v.say)u.bub.visible=false})}
 function scare(n){
  const v=vis[cur];if(!v.m||v.state!=='walk')return{hit:false};
  v.fear+=n;v.vy=.1;const fled=v.fear>=3;say(v,fled?'NOPE!':'Aah!');if(fled)v.state='flee';return{hit:true,fled}}
-// Vampire bite: the first makes a visitor dizzy, a second within 9 seconds turns them (they walk out as a vampire).
-function bite(){const v=vis[cur];if(!v.m||v.state!=='walk')return null;const now=performance.now();
- if(now-(v.biteAt||0)>9000)v.bites=0;v.bites=(v.bites||0)+1;v.biteAt=now;v.vy=.06;
- if(v.bites>=2){v.state='turned';makeVamp(v.m);say(v,'Fangs!');return'turned'}
- say(v,'Ow?');return'bitten'}
+// Vampire bite on the right scent: the visitor turns and walks out as a vampire.
+function bite(){const v=vis[cur];if(!v.m||v.state!=='walk')return null;v.vy=.06;v.state='turned';makeVamp(v.m);say(v,'Fangs!');return'turned'}
+function startle(t){const v=vis[cur];if(v.m){v.vy=.08;say(v,t)}}
+function linger(ms){const v=vis[cur];if(!v.m)return;const u=performance.now()+ms;v.stay=u;v.until=Math.max(v.until,u)}
+function pickVisitor(x,y){const v=vis[cur];if(!v.m)return false;aimRay(x,y);v.m.updateMatrixWorld(true);return rc.intersectObject(v.m.userData.hitBox).length>0}
+function setGarlic(i,on){const v=vis[i];if(v.m){v.garlic=on;v.m.userData.garlic.visible=on}}
+function extend(i,ms){if(vis[i].m)vis[i].until+=ms}
 // How the current room's visitor looks to the monster: state, garlic, and how far from the monster on screen.
 function visitor(){const v=vis[cur];if(!v.m)return null;
  nd(_v.set(v.m.position.x,v.m.position.y+1.5,v.m.position.z),_b);nd(gh.position,_a);
- return{state:v.state,garlic:!!v.garlic,d:sdist(_a,_b)}}
+ return{ref:v,state:v.state,garlic:!!v.garlic,d:sdist(_a,_b)}}
 function setRoom(i){cur=i;const r=RM[i];wallM.color.setHex(r[0]);sideM.color.setHex(r[1]);floorM.color.setHex(r[2]);
- ex.forEach((g,k)=>g.visible=k===i);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3;
+ ex.forEach((g,k)=>g.visible=k===i&&!arenaOn);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3;
  dbgG.forEach((g,k)=>g.visible=k===i);dbgPath()}
 setRoom(0);
-function sched(){setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(free.length)spawn(free[Math.random()*free.length|0]);sched()},9000+Math.random()*14000)}
-setTimeout(()=>spawn(1+(Math.random()*2|0)),5000);sched();
+function sched(){setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(visOn&&free.length)spawn(free[Math.random()*free.length|0]);sched()},9000+Math.random()*14000)}
+sched();
+// Only classes that have visitors turn them on. Off removes everyone at once.
+function setVisitors(on){visOn=on;clearTimeout(firstT);
+ if(on)firstT=setTimeout(()=>{if(visOn)spawn(1+(Math.random()*2|0))},5000);
+ else vis.forEach((v,i)=>{if(v.m)removeV(i,'clear')})}
+function arena(on){arenaOn=on;ex[cur].visible=!on;pumpB.visible=!on;laneG.visible=on}
+function place(x,y,z,k,bob,sy){pinned=true;gt.x=x;gt.y=y;gt.z=z;gk=k||.08;bobA=bob===undefined?.12:bob;poseY=sy||1}
+// Whatever the last class left in the room goes away here.
+function resetClass(){hold([]);orbs.forEach(o=>S.remove(o.m));orbs.length=0;ring(null);witchG.visible=false;shelf([]);stew([]);candle(1);viewX=0;arena(false);lanes(-1);hunter([]);aim([]);
+ streaks.forEach(o=>S.remove(o.m));streaks.length=0;puffs.forEach(o=>S.remove(o.m));puffs.length=0;
+ pinned=false;gk=.08;bobA=.12;poseY=1;gt.z=.5;flashK=0;moonK=0}
 
 // loop
 const clock=new THREE.Clock();let mx=0,my=0;
 host.addEventListener('pointermove',e=>{const r=host.getBoundingClientRect();mx=(e.clientX-r.left)/r.width-.5;my=(e.clientY-r.top)/r.height-.5});
 function loop(){
- requestAnimationFrame(loop);const t=clock.getElapsedTime();
+ requestAnimationFrame(loop);const t=calm.matches?0:clock.getElapsedTime(),sw=calm.matches?0:1;
  dg.rotation.y+=(dk-dg.rotation.y)*dkK;
- if(tvT[1]==='Static')drawTV();
+ if(tvT[1]==='Static'&&sw)drawTV();
  flick.forEach((l,i)=>l.intensity=l.userData.b*(.78+.22*Math.sin(t*9+i*2)*Math.random()));
  flames.forEach((f,i)=>f.scale.y=1.5+.4*Math.sin(t*12+i));
  bubbles.forEach((b,i)=>{const p=(t*.5+i*.27)%1;b.position.y=1+p*.55;b.scale.setScalar(1-p*.6)});
@@ -403,20 +481,24 @@ function loop(){
   m.position.set(Math.cos(a)*b.r,b.y+Math.sin(t*2+b.o)*.3,-1+Math.sin(a)*b.r*.4);m.rotation.y=-a;
   const f=Math.sin(t*14+b.o)*.6;m.userData.w1.rotation.z=f;m.userData.w2.rotation.z=-f});
  sp.position.y=3.3+Math.sin(t*1.3)*.3;const th=5-sp.position.y;thread.scale.y=th;thread.position.y=th/2;
- if(performance.now()-lastHand>1500){gt.x=1.6+Math.sin(t*.4)*1.2;gt.y=3.3}
- const px0=gh.position.x;gh.position.x+=(gt.x-gh.position.x)*.08;gh.position.y+=(gt.y+Math.sin(t*2)*.12-gh.position.y)*.08;
- gh.rotation.z=-(gt.x-px0)*.15;
+ if(!pinned&&performance.now()-lastHand>1500){gt.x=1.6+Math.sin(t*.4)*1.2;gt.y=3.3}
+ const px0=gh.position.x;gh.position.x+=(gt.x-gh.position.x)*gk;gh.position.y+=(gt.y+Math.sin(t*2)*bobA-gh.position.y)*gk;gh.position.z+=(gt.z-gh.position.z)*gk;
+ gh.scale.y=poseY;gh.rotation.z=-(gt.x-px0)*.15;
  flashK*=.9;spellL.intensity=flashK*3;mirK*=.93;mirM.color.setHex(mirK>.12?0xff6070:0xffffff);moonK*=.96;moon.scale.setScalar(1+moonK*1.1);
- orbsTick(t);
+ orbsTick(t);fxTick(t);
  visitors(t);
- C.position.set(mx*1.4+(Math.random()-.5)*shake*.15,2.7-my*.5+(Math.random()-.5)*shake*.15,6.4);shake*=.9;
- C.lookAt(0,2.1,-1);R.render(S,C)}
+ const sk=shake*sw;C.position.set(viewX+mx*1.4*sw+(Math.random()-.5)*sk*.15,2.7-my*.5*sw+(Math.random()-.5)*sk*.15,6.4);shake*=.9;
+ C.lookAt(viewX,2.1,-1);R.render(S,C)}
 loop();
 
 new ResizeObserver(()=>{R.setSize(W(),H(),false);C.aspect=W()/H();C.updateProjectionMatrix()}).observe(host);
 
 window.Room={
- setRoom,scare,setMonster,visitor,bite,hover,ring,hold,cast,mirrorNear,
+ setRoom,scare,setMonster,visitor,bite,startle,linger,pick,pickVisitor,setGarlic,extend,setVisitors,ring,hold,pour,stew,glow,flash,smoke,shelf,candle,cauldronXY,arena,lanes,place,hunter,muzzle,aim,streak,mirrorNear,resetClass,
+ visitorAt(i){return vis[i].m?vis[i]:null},
+ props(on){witchG.visible=on},
+ view(x){viewX=x},
+ shake(n){shake=n},
  mirrorFlash(){mirK=1},
  moon(){moonK=1},
  blinds(c){blindsG.visible=!!c},

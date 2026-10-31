@@ -20,6 +20,7 @@
   <div id="bRows"></div>
   <ul class="bstats" id="bStats"></ul>
   <p id="bNote"></p>
+  <p id="bClass" aria-live="polite"></p>
   <button class="start" id="bGo" type="button">Start training</button>
  </div>
 </div>
@@ -27,10 +28,10 @@
 <div class="wrap">
 <header>
 <h1>Poltergeist Remote</h1>
-<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
+<p id="headCopy">A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
 </header>
 <div class="grid">
- <aside class="col l" aria-label="Camera and voice">
+ <aside class="col l" aria-label="Camera and voice" data-for="ghost">
   <div class="gcap idle" id="gcap" aria-hidden="true">
    <span class="gi" id="gcapIcon"></span>
    <span class="gt"><b id="gcapName"></b><span class="arrow"> → </span><span id="gcapAct"></span></span>
@@ -49,16 +50,18 @@
   </div>
   <p id="heard" aria-live="polite">Voice is off.</p>
  </aside>
+ <aside class="col l" id="classCol" aria-label="Class panel" data-for="witch werewolf vampire"><section class="classp" id="classPanel"></section></aside>
 
  <main class="col c">
-  <div class="tabs" id="tabs" role="group" aria-label="Rooms"></div>
+  <div class="tabs" id="tabs" role="group" aria-label="Rooms" data-for="ghost vampire"></div>
   <div class="alert" id="alert" role="alert" hidden><span id="alertText"></span> <button id="alertGo" type="button">Go there</button></div>
   <div class="crt">
    <div class="room" id="room">
-    <div class="score">Scares: <b id="score">0</b></div>
+    <div class="score"><span id="scoreLabel">Scares</span>: <b id="score">0</b></div>
+    <div class="cue" id="cue" aria-hidden="true" hidden></div>
     <div class="held" id="held" role="status" hidden></div>
-    <div class="plug">Smart plug: <b id="plugState">ON</b></div>
-    <svg class="mini" id="mini" viewBox="0 0 120 86" aria-hidden="true">
+    <div class="plug" data-for="ghost">Smart plug: <b id="plugState">ON</b></div>
+    <svg class="mini" id="mini" viewBox="0 0 120 86" aria-hidden="true" data-for="ghost vampire">
      <path class="pass" d="M30 40v6M90 40v6M58 65h4"/>
      <g class="mr"><rect x="2" y="2" width="116" height="38" rx="3"/><text x="8" y="13">Living room</text>
       <circle class="ring" cx="60" cy="24" r="7"/><circle class="vd" cx="84" cy="27" r="3"/><circle class="gd" cx="34" cy="27" r="3.4"/></g>
@@ -75,17 +78,18 @@
     <label class="vol">Volume <input type="range" id="vol" min="0" max="100" value="60"></label>
    </div>
   </div>
-  <p id="log" aria-live="polite">Waiting for a gesture.</p>
+  <p id="log" aria-live="polite"></p>
   <div class="btns">
-   <button id="bL">Lights (L)</button>
-   <button id="bC">Next channel (→)</button>
-   <button id="bD">Door (D)</button>
-   <button id="bB">Blinds (B)</button>
-   <button id="bP">Power (P)</button>
-   <button id="bG" hidden>Grab (G)</button>
+   <button id="bL" data-for="ghost vampire werewolf">Lights (L)</button>
+   <button id="bC" data-for="ghost">Next channel (→)</button>
+   <button id="bD" data-for="ghost">Door (D)</button>
+   <button id="bB" data-for="ghost vampire werewolf">Blinds (B)</button>
+   <button id="bP" data-for="ghost">Wail (P)</button>
+   <span id="classBtns"></span>
   </div>
   <div class="legend">
-   <table>
+   <table id="classLegend" data-for="witch werewolf vampire"></table>
+   <table data-for="ghost">
     <caption>Spellbook</caption>
     <thead><tr><th>Action</th><th>Hand</th><th>Say</th><th>Head &amp; face</th></tr></thead>
     <tbody>
@@ -94,8 +98,7 @@
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
      <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
      <tr><th scope="row">Close or open the blinds</th><td>&ndash;</td><td>"Blinds"</td><td>&ndash;</td></tr>
-     <tr><th scope="row">Use your monster power</th><td>Thumbs up</td><td>"Bite", "Cast", "Howl", "Wail"</td><td>Turn head</td></tr>
-     <tr><th scope="row">Grab something (witch)</th><td>Point</td><td>"Grab", "Grab the skull"</td><td>Hover over it</td></tr>
+     <tr><th scope="row">Use your monster power</th><td>Thumbs up</td><td>"Wail"</td><td>Turn head</td></tr>
      <tr id="aiRow" hidden><th scope="row">Anything else (AI)</th><td>&ndash;</td><td>"Set the mood for a scary movie night"</td><td>&ndash;</td></tr>
     </tbody>
    </table>
@@ -128,6 +131,7 @@
 <script src="audio.js"></script>
 <script src="academy.js"></script>
 <script src="monsters.js"></script>
+<script src="classes.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
