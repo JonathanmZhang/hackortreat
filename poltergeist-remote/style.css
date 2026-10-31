@@ -36,6 +36,8 @@ button[aria-pressed="true"]{border-color:var(--ecto);color:var(--ecto);box-shado
 .inputs{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .inputs label{display:flex;gap:7px;align-items:center;font-size:.9rem;color:var(--mute);cursor:pointer}
 input[type=checkbox]{accent-color:var(--pump);width:1.05rem;height:1.05rem}
+.inputs small{font-size:.78rem;opacity:.85}
+.inputs label:has(input:disabled){opacity:.65;cursor:default}
 #heard{margin:0;font-size:.88rem;color:var(--mute);min-height:1.2em}
 .legend{background:linear-gradient(#1b1124,#120b19);padding:6px 14px 10px;font-size:.88rem;line-height:1.5;overflow-x:auto}
 .legend table{width:100%;border-collapse:collapse}
