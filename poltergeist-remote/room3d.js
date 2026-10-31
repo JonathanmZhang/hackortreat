@@ -317,7 +317,7 @@ function fxTick(t){
   if(q.p>=1){S.remove(q.m);q.m.material.dispose();puffs.splice(i,1);continue}
   if(!calm.matches){q.m.position.y+=.022;q.m.scale.setScalar(1+q.p*2.2)}q.m.material.opacity=.8*(1-q.p)}
  const pulse=calm.matches?1:.75+.25*Math.sin(t*22);aimM.opacity=.75*pulse;for(const k in HUNT)HUNT[k].glint.scale.setScalar(.8+pulse*.7)}
-function mirrorNear(){nd(gh.position,_a);nd(MIRP,_b);return sdist(_a,_b)<.3}
+function mirrorNear(){nd(gh.position,_a);nd(MIRP,_b);return sdist(_a,_b)<.2}
 
 // rooms: same layout, recoloured, with different furniture
 const RM=[[0x4a3a6e,0x3f3262,0xffffff],[0x3a4a7a,0x2f3a62,0xb8c8ff],[0x2f6a5a,0x265446,0xc8d8c8]];
@@ -337,7 +337,7 @@ const OBST={
  rooms:[[box(0,.95,2.9,1.1)],[box(0,.25,2.4,2.95)],[box(-4.2,-2.3,1.1,1),box(0,.9,2,1.2)]]};
 
 // visitors: people wander in through the door, one per room at a time
-let cur=0,visOn=false,firstT=0,viewX=0,arenaOn=false;
+let cur=0,visOn=false,firstT=0,schedT=0,visPace=1,viewX=0,arenaOn=false;
 const vis=[{m:null},{m:null},{m:null}],DOORP=new THREE.Vector3(3.05,0,-2.3),ENTRY=new THREE.Vector3(3.4,0,-1.2),SAFE={x:2.6,z:.5};
 
 // walkability: one grid per room (each visitor uses its own room's), built once. A cell is walkable if a visitor can reach it from ENTRY.
@@ -454,11 +454,10 @@ function setRoom(i){cur=i;const r=RM[i];wallM.color.setHex(r[0]);sideM.color.set
  ex.forEach((g,k)=>g.visible=k===i&&!arenaOn);vis.forEach((v,k)=>{if(v.m)v.m.visible=k===i});dk=-1.15;dkK=.3;
  dbgG.forEach((g,k)=>g.visible=k===i);dbgPath()}
 setRoom(0);
-function sched(){setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(visOn&&free.length)spawn(free[Math.random()*free.length|0]);sched()},9000+Math.random()*14000)}
-sched();
-// Only classes that have visitors turn them on. Off removes everyone at once.
-function setVisitors(on){visOn=on;clearTimeout(firstT);
- if(on)firstT=setTimeout(()=>{if(visOn)spawn(1+(Math.random()*2|0))},5000);
+function sched(){schedT=setTimeout(()=>{const free=[0,1,2].filter(i=>!vis[i].m);if(free.length)spawn(free[Math.random()*free.length|0]);sched()},(9000+Math.random()*14000)*visPace)}
+// Only classes that have visitors turn them on. Off removes everyone at once. pace < 1 means they arrive more often.
+function setVisitors(on,pace){visOn=on;visPace=pace||1;clearTimeout(firstT);clearTimeout(schedT);
+ if(on){firstT=setTimeout(()=>{if(visOn)spawn(1+(Math.random()*2|0))},5000);sched()}
  else vis.forEach((v,i)=>{if(v.m)removeV(i,'clear')})}
 function arena(on){arenaOn=on;ex[cur].visible=!on;pumpB.visible=!on;laneG.visible=on}
 function place(x,y,z,k,bob,sy){pinned=true;gt.x=x;gt.y=y;gt.z=z;gk=k||.08;bobA=bob===undefined?.12:bob;poseY=sy||1}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Poltergeist Remote</title>
+<title>Fright Academy</title>
 <meta name="theme-color" content="#050c09">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,10 +24,21 @@
   <button class="start" id="bGo" type="button">Start training</button>
  </div>
 </div>
+<div class="builder" id="report" role="dialog" aria-modal="true" aria-labelledby="rcTitle" hidden>
+ <div class="bcard rcard">
+  <h2 id="rcTitle" tabindex="-1">Report Card</h2>
+  <p id="rcWho"></p>
+  <div class="rcgrade" id="rcGrade"></div>
+  <p id="rcVerdict"></p>
+  <ul class="bstats" id="rcStats"></ul>
+  <ol id="rcGoals"></ol>
+  <div class="rcbtns"><button class="start" id="rcMain" type="button"></button><button id="rcAlt" type="button"></button></div>
+ </div>
+</div>
 <div class="lights" id="lights" aria-hidden="true"></div>
 <div class="wrap">
 <header>
-<h1>Poltergeist Remote</h1>
+<h1>Fright Academy</h1>
 <p id="headCopy">A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
 </header>
 <div class="grid">
@@ -52,7 +63,7 @@
  </aside>
  <aside class="col l" id="classCol" aria-label="Class panel" data-for="witch werewolf vampire"><section class="classp" id="classPanel"></section></aside>
 
- <main class="col c">
+ <main class="col c" id="mainCol">
   <div class="tabs" id="tabs" role="group" aria-label="Rooms" data-for="ghost vampire"></div>
   <div class="alert" id="alert" role="alert" hidden><span id="alertText"></span> <button id="alertGo" type="button">Go there</button></div>
   <div class="crt">
@@ -87,10 +98,23 @@
    <button id="bP" data-for="ghost">Wail (P)</button>
    <span id="classBtns"></span>
   </div>
-  <div class="legend">
-   <table id="classLegend" data-for="witch werewolf vampire"></table>
-   <table data-for="ghost">
-    <caption>Spellbook</caption>
+  <div class="legend" data-for="witch werewolf vampire"><table id="classLegend"></table></div>
+ </main>
+
+ <aside class="col r" id="rightCol" aria-label="Instructor and reference">
+  <section class="coach" id="coach" aria-labelledby="coachTitle">
+   <h2 id="coachTitle" tabindex="-1">Instructor</h2>
+   <p id="coachWho"></p>
+   <p id="coachClock"></p>
+   <p id="coachSay" aria-live="polite"></p>
+   <p id="coachHint" aria-live="polite"></p>
+   <ol id="coachSteps"></ol>
+   <label id="expWrap" hidden>Sunlight exposure <progress id="exp" max="100" value="0"></progress></label>
+   <div class="cbtns"><button id="hintBtn" type="button">Hint</button><button id="reBuild" type="button">Change monster</button></div>
+  </section>
+  <div class="legend" data-for="ghost">
+   <table>
+    <caption>Dark Arts</caption>
     <thead><tr><th>Action</th><th>Hand</th><th>Say</th><th>Head &amp; face</th></tr></thead>
     <tbody>
      <tr><th scope="row">Flick the lights</th><td>Pinch</td><td>"Lights"</td><td>Nod</td></tr>
@@ -103,18 +127,6 @@
     </tbody>
    </table>
   </div>
- </main>
-
- <aside class="col r" aria-label="Instructor and command history">
-  <section class="coach" id="coach" aria-labelledby="coachTitle">
-   <h2 id="coachTitle" tabindex="-1">Instructor</h2>
-   <p id="coachWho"></p>
-   <p id="coachSay" aria-live="polite"></p>
-   <p id="coachHint" aria-live="polite"></p>
-   <ol id="coachSteps"></ol>
-   <label id="expWrap" hidden>Sunlight exposure <progress id="exp" max="100" value="0"></progress></label>
-   <div class="cbtns"><button id="hintBtn" type="button">Hint</button><button id="reBuild" type="button">Change monster</button></div>
-  </section>
   <details class="history" id="history">
    <summary>Command history (<span id="histCount">0</span>)</summary>
    <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>

@@ -156,19 +156,13 @@ function volley(){
  $('cue').textContent=cue;$('cue').hidden=false;
  log(double?'Two hunters aim down two lanes.':'Hunter at the '+shots[0].side+' aims '+(kind==='lane'?'down the '+LANE[shots[0].lane]+' lane.':kind+'.'));
  wolfPanel()}
-function roundReset(){
- D.hearts=3;D.level=0;D.row=0;D.clean=0;D.volNo=0;D.pause=2600;clearVolley();
- if(D.moon)D.moonT=MOON_MS;
- Academy.reset('dodge');Sfx.fizzle();
- Academy.tip(pick(['Silver in the ribs. Up you get, we go again.','Dead weight on the carpet. Hearts back, start over.','You are supposed to be faster than a bullet. Again.']));
- log('Out of hearts. The round starts over.');wolfPanel()}
 function resolve(s){
  s.done=true;const v=D.vol;
  const hit=s.kind==='lane'?Math.abs(D.x-LX[s.lane])<.9:s.kind==='high'?D.pose!=='duck':D.pose!=='jump';
  if(hit){
   v.hit=true;D.hearts--;D.row=0;D.clean=0;Sfx.hit();Room.shake(.9);Room.flash(0xdfe8ff);Academy.reset('dodge');
   log('Silver! '+D.hearts+(D.hearts===1?' heart':' hearts')+' left.');
-  if(D.hearts<=0){roundReset();return}
+  if(D.hearts<=0){clearVolley();wolfPanel();Academy.lose('Three silver bullets, and the hunters got their werewolf.');return}
  }else{
   D.row++;award(1);Sfx.whiz();
   if(D.row%4===0)D.level=Math.min(8,D.level+1);
@@ -290,7 +284,7 @@ function bite(src){
  const ng=Academy.goal();if(ng===g||ng<TRICKY_GOAL)newScentOrder(false)}
 const Vampire={
  title:'Scent Matching',score:'Points',head:'The coven is particular about its supper. Drift through the dark house, breathe in each visitor and bite only the one whose scent matches the order. Lamps, mirrors and garlic all get in the way.',
- greet:'The coven has sent an order.',visitors:true,keys:'Arrows or W/A/D float (↓ for down) · S sniff · F bite · L lights · B blinds · 1–3 rooms',
+ greet:'The coven has sent an order.',visitors:true,pace:.6,keys:'Arrows or W/A/D float (↓ for down) · S sniff · F bite · L lights · B blinds · 1–3 rooms',
  legend:[['Float around','Arrow keys, or W A D (↓ for down)','Move the pointer, or drag'],['Sniff a visitor','S','Click them, or the Sniff button'],['Bite','F','Bite button'],['Lights / blinds','L / B','Lights and Blinds buttons'],['Switch room','1, 2, 3','Tabs or the minimap']],
  enter(){
   V={order:null,tricky:false,sn:null,wary:0,mirrorAt:0,nx:.5,ny:.35,keys:{},ui:0};
@@ -299,7 +293,7 @@ const Vampire={
   $('classPanel').innerHTML='<h2>Scent Matching</h2><div class="ocard" id="vOrder"></div><h3>Sniff results</h3><ul id="vSniffs"></ul><p class="ckeys">'+this.keys+'</p>';
   newScentOrder(false)},
  leave(){V=null},
- goal(g){if(g===TRICKY_GOAL){newScentOrder(true);log('A tricky order from the coven.')}else if(g>TRICKY_GOAL)newScentOrder(false)},
+ goal(g){if(g===TRICKY_GOAL){newScentOrder(true);log('A tricky order from the coven.')}},
  arrive(i){const v=Room.visitorAt(i);if(!v)return;v.room=i;v.rev=0;Room.extend(i,VISIT_MS);v.scent=scentFor(i,v);vampPaint()},
  gone(){if(V.sn&&!liveVisitors().includes(V.sn.ref))V.sn=null;rescent();vampPaint()},
  tick(dt){
@@ -346,7 +340,9 @@ function start(species,stats,title){
  const key=species.toLowerCase();
  document.querySelectorAll('[data-for]').forEach(el=>el.toggleAttribute('data-off',!el.dataset.for.split(' ').includes(key)));
  $('coachTitle').textContent='Instructor · '+title;$('headCopy').textContent=C.head;$('scoreLabel').textContent=C.score;legend(C);log(C.greet);
- Room.setVisitors(!!C.visitors);C.enter&&C.enter()}
+ // Ghost only: the Dark Arts table takes the right column and the command history sits under the room.
+ $(C.ghost?'mainCol':'rightCol').appendChild($('history'));
+ Room.setVisitors(!!C.visitors,C.pace);C.enter&&C.enter()}
 // Everything a class set up comes down here, including anything it left in the room.
 function stop(){
  if(C&&C.leave)C.leave();C=null;
@@ -369,6 +365,8 @@ onRoom('pointerdown','down');onRoom('pointermove','move');onRoom('pointerup','up
 function frame(now){
  requestAnimationFrame(frame);
  const dt=Math.min(100,now-last);last=now;
+ if(!C||document.body.classList.contains('building'))return;
+ Academy.clock(dt);
  if(C&&C.tick&&!document.body.classList.contains('building'))C.tick(dt)}
 requestAnimationFrame(frame);
 

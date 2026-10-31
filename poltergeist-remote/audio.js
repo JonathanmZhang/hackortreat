@@ -143,6 +143,11 @@ function sniff(){const t=T();[0,.15].forEach(dt=>{const n=noise(t+dt,.13),bp=fil
 function sick(){const t=T(),o=osc('sawtooth',170,t,.8);o.frequency.linearRampToValueAtTime(240,t+.2);o.frequency.exponentialRampToValueAtTime(55,t+.75);
  const v=osc('sine',11,t,.8),vg=gain(30);v.connect(vg);vg.connect(o.frequency);const lp=filt('lowpass',800,3),g=gain(0);o.connect(lp);lp.connect(g);env(g,t,.03,.5,.72);out(g,.4)}
 
+// ---------- Report card ----------
+function win(){const t=T();[392,523,659,784,1047].forEach((f,i)=>{const o=osc('triangle',f,t+i*.11,.9),g=gain(0);env(g,t+i*.11,.01,.2,.75);o.connect(g);out(g,.7)})}
+// A slow bell tolling down over a low thud.
+function lose(){const t=T();thump(t,.9);[220,185,147].forEach((f,i)=>{const dt=i*.42,o=osc('sine',f,t+dt,1.5),h=osc('sine',f*2.76,t+dt,.7),g=gain(0),hg=gain(0);env(g,t+dt,.01,.32,1.3);env(hg,t+dt,.01,.08,.6);o.connect(g);h.connect(hg);out(g,.9);out(hg,.9)})}
+
 // ---------- Start, mute, volume ----------
 function build(){
  ctx=new AC();
@@ -180,7 +185,7 @@ window.Sfx={
  start,heart,
  click:play(click),tv:play(tv),slam:play(slam),chime:play(chime),whoo:play(whoo),
  pluck:play(pluck),spell:play(spell),fizzle:play(fizzle),howl:play(howl),bite:play(bite),shatter:play(shatter),
- plop:play(plop),stir:play(stir),brew:play(brew),puff:play(puff),aim:play(aim),shot:play(shot),hit:play(hit),whiz:play(whiz),sniff:play(sniff),sick:play(sick),
+ plop:play(plop),stir:play(stir),brew:play(brew),puff:play(puff),aim:play(aim),shot:play(shot),hit:play(hit),whiz:play(whiz),sniff:play(sniff),sick:play(sick),win:play(win),lose:play(lose),
  scare:play(()=>{sting(false);bump=Math.min(.6,bump+.25);if(Math.random()<.5)gasp();else scream(.7,650)}),
  flee:play(()=>{sting(true);scream(1.5,560);bump=Math.min(.6,bump+.3)})
 };

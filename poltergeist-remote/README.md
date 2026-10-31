@@ -1,10 +1,10 @@
-# Poltergeist Remote
+# Fright Academy
 
 A Halloween hackathon project with four monsters and four classes. A ghost can't touch a light switch, so it controls the room without touching anything: hand gestures, your voice, or head and face movements. The other monsters have hands and paws, so they use the mouse, touch and the keyboard. Built with plain HTML, CSS, JavaScript, [Three.js](https://threejs.org) for the 3D room, [MediaPipe](https://developers.google.com/mediapipe) (Hands and Face Mesh) and the browser's Web Speech API. No build step. An optional zero-dependency Node server (`server.js`) adds free-form AI voice commands; everything else runs in the browser.
 
 ## Controls
 
-Hands-free input is the Ghost's mode. Camera, face tracking, voice and AI voice only exist while you play the Ghost, and switching to another monster stops them and releases the camera and microphone. Each of the other classes shows its own controls on the page.
+Hands-free input is the Ghost's mode. Camera, face tracking, voice and AI voice only exist while you play the Ghost, and switching to another monster stops them and releases the camera and microphone. The Ghost's table is called **Dark Arts** on the page. Each of the other classes shows its own controls table.
 
 **Ghost:**
 
@@ -31,7 +31,7 @@ In Scent Matching `S` means sniff, so floating down is on the `↓` key only.
 
 ## Fright Academy (monster builder)
 
-The page opens on a carousel where you build a monster: species, colour and accessory. Each species has its own 3D model in the room (the accessory and colour show on it too) and takes its own class, which the builder names next to the species note. **Change monster** reopens the carousel, and your last build is remembered. Switching monsters always starts from a clean house: nothing carries over from the last class, including the score.
+The page opens on a carousel where you build a monster: species, colour and accessory. Each species has its own 3D model in the room (the accessory and colour show on it too) and takes its own class, which the builder names next to the species note. **Change monster** reopens the carousel, and your last build is remembered. Switching monsters always starts from a clean house: nothing carries over from the last class, including the score and the clock.
 
 The build sets three stats, **scare**, **stealth** and **stamina**. Each class uses them differently:
 
@@ -44,9 +44,29 @@ The build sets three stats, **scare**, **stealth** and **stamina**. Each class u
 
 The **Instructor** panel names your class ("Instructor · Potions") and gives goals, not instructions. Each goal says what to achieve ("Fill the order on the card"), never which key or gesture to use, and goals still to come show as `???`. Press **Hint** for a nudge written for your class (each press gives a stronger one), or wait: if you are stuck the instructor offers a hint on its own after about 25 seconds and a stronger one after about 60. The instructor also makes the odd remark when something goes wrong, like a garlic wearer or a burned-out candle.
 
+## Report card
+
+Every class is against the clock, which shows in the instructor panel. Finish every objective and the grade depends on your time:
+
+| Time to finish | Grade |
+| --- | --- |
+| Under 0:30 | A |
+| Under 1:00 | B |
+| Under 1:30 | C |
+| Under 2:00 | D |
+| 2:00 is up | F, you lose |
+
+The same bands apply to every class, but some classes have a built-in minimum. Dodging contains 60 seconds of survival timers, so a C is its best possible grade. Scent Matching needs five exact matches and depends on visitors arriving, so it is the tightest class against the clock.
+
+You also lose, with an F, if you burn to ash as the Vampire (the exposure bar fills) or lose all three hearts as the Werewolf. The clock stops in a hidden tab and while a dialog is open.
+
+The report card shows your grade, time, score and which objectives you finished. After a win it prompts you to change monster, or you can play again. After a loss you can try again or change monster.
+
+## How the classes work
+
 **Potions.** About six named recipes need 2 or 3 ingredients. The book lists four. The other two start as `???` and join the book when you brew them, which takes hints or experimenting. Some recipes care about order (they show arrows) and some want stirring first. The liquid and light change colour as things go in. A good brew glows, chimes and puts a bottle on the shelf, and filling the order card pays double. A bad one goes up in smoke and resets the cauldron.
 
-**Dodging.** A red line and a glint show where a hunter is aiming, and a cue on the TV names it. A shot down your lane means change lane, a high line means duck, a low line means jump. Each kind of shot also cocks at its own pitch. Shots get faster and double up as you go. A hit costs a heart, and losing all three starts the round over. In a dark room with the blinds open, a howl scares the hunters off for a few seconds.
+**Dodging.** A red line and a glint show where a hunter is aiming, and a cue on the TV names it. A shot down your lane means change lane, a high line means duck, a low line means jump. Each kind of shot also cocks at its own pitch. Shots get faster and double up as you go. A hit costs a heart, and losing all three fails the course. The full moon gives your hearts back once. In a dark room with the blinds open, a howl scares the hunters off for a few seconds.
 
 **Scent Matching.** Each visitor has three notes out of sweet, iron, smoky, floral, salty and citrus. Stay close while you sniff and they show one at a time, and a visitor who is being sniffed stands still. Fangs need a dark room and open blinds. An exact match walks out as a vampire. A wrong bite makes you sick: the exposure bar jumps, the visitor runs and you lose points. The game always keeps a way to fill the order: if nobody in the house matches, the next visitor does.
 
@@ -126,6 +146,7 @@ Notes:
 - Voice words: the patterns in `voiceCmd()`
 - Sounds: each effect is a short function in `audio.js` (`slam()`, `whoo()`, `scream()` and so on); the heartbeat range is in `beat()`
 - Monsters: species, colours, accessories, each class's name, and its goals and hints (`COURSE`) are plain objects at the top of `academy.js`; the 3D models (`MON.Ghost`, `MON.Vampire`, `MON.Witch`, `MON.Werewolf`) are in `room3d.js`
+- Report card: `BAND` (how long each grade lasts), `GRADES`, `REMARK` and `BURN` (the vampire's burn rate) at the top of `academy.js`
 - Ghost: the fear from room actions (`FEAR`) and the wail are in `monsters.js`
 - Potions (`classes.js`): `RECIPES` and `ING`, plus `rushMs`, `potPts` and `stirsFor` for the stat mapping
 - Dodging (`classes.js`): `teleMs`, `travelMs` and `gapMs` for the difficulty, `POSE`, `MOON_MS`, `CLEAN_MS` and `HOWL_QUIET`

@@ -117,7 +117,7 @@ input[type=checkbox]{accent-color:var(--mag);width:1.05rem;height:1.05rem}
 .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 #log{font-size:.95rem;color:var(--acid);min-height:2.4em;margin:12px 2px 0;text-align:center}
 
-/* ---------- Spellbook ---------- */
+/* ---------- Dark Arts and the class controls tables ---------- */
 .legend table{width:100%;border-collapse:collapse}
 .legend caption{font-family:Creepster,Georgia,serif;font-size:1.6rem;letter-spacing:.05em;color:#ff8fec;text-shadow:0 0 12px #ff2bd699;text-align:center;padding:0 0 8px}
 .legend th,.legend td{text-align:left;padding:6px 10px 6px 0;vertical-align:top;border-top:1px solid var(--line)}
@@ -210,6 +210,23 @@ body:not([data-species="ghost"]) .room{touch-action:none}
 .cue[hidden]{display:none}
 #classLegend{width:100%}
 .legend #classLegend td{color:var(--mute)}
+
+/* ---------- Report card ---------- */
+.c>.history{margin-top:14px}
+#coachClock{margin:0 0 8px;text-align:center;color:var(--cyan);font-size:.85rem;font-variant-numeric:tabular-nums}
+.rcard{--neon:var(--acid);--glow:#b6ff2a30;margin:auto}
+#rcWho{margin:0 0 4px}
+.rcgrade{font:400 6rem/1.1 Creepster,Georgia,serif;color:var(--acid);text-shadow:0 0 6px var(--acid),0 0 26px #b6ff2a88}
+.rcard.fail{--neon:var(--mag);--glow:#ff2bd63a}
+.rcard.fail h2{color:#ffc4f3;text-shadow:0 0 4px #ffc4f3,0 0 14px var(--mag)}
+.rcard.fail .rcgrade{color:#ff5ae0;text-shadow:0 0 6px var(--mag),0 0 26px #ff2bd688}
+#rcVerdict{color:var(--ink);font-weight:700}
+#rcStats li{letter-spacing:0}
+#rcStats li span:last-child{color:var(--acid);font-weight:700}
+#rcGoals{list-style:none;margin:10px 0 14px;padding:0;text-align:left;font-size:.88rem;color:var(--mute)}
+#rcGoals li{padding:3px 0}
+#rcGoals .done{color:var(--acid)}
+.rcbtns{display:flex;flex-direction:column;gap:8px}
 
 /* ---------- Monster powers ---------- */
 .held{position:absolute;right:3%;bottom:5%;max-width:70%;text-align:right;z-index:7;font-size:.85rem;color:var(--mute);background:#04100bcc;border:1px solid #ff2bd666;border-radius:20px;padding:4px 11px}

@@ -1,4 +1,4 @@
-// Poltergeist Remote server: serves the site and turns free-form speech into room actions with Gemini.
+// Fright Academy server: serves the site and turns free-form speech into room actions with Gemini.
 // Zero dependencies, Node 18+. Run: GEMINI_API_KEY=your-key node server.js (or put the key in .env)
 // The API key stays on this server and is never sent to the browser.
 'use strict';
@@ -22,7 +22,7 @@ const API = (process.env.GEMINI_API_URL || 'https://generativelanguage.googleapi
 const ROOM_NAMES = ['Living room', 'Bedroom', 'Kitchen'];
 
 // ---------- What Gemini is told ----------
-const SYSTEM = `You are the brain of Poltergeist Remote, a smart-room demo where the user is a ghost who cannot touch anything. Turn the user's spoken request into an ordered list of actions by calling run_actions.
+const SYSTEM = `You are the brain of Fright Academy, a smart-room demo where the user is a ghost who cannot touch anything. Turn the user's spoken request into an ordered list of actions by calling run_actions.
 
 The house has 3 rooms: 1 Living room, 2 Bedroom, 3 Kitchen. Each room has its own lights (on or off) and its own TV. The TV has 4 channels: 1 Static, 2 Haunted Home Makeover, 3 Séance Shopping, 4 Ghost News at Nine. Actions apply to the current room unless you switch rooms first. The door can be slammed (a smart plug is triggered too). The ghost has a signature power: "power" makes it wail.
 
@@ -180,6 +180,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Poltergeist Remote: http://127.0.0.1:${PORT}`);
+  console.log(`Fright Academy: http://127.0.0.1:${PORT}`);
   console.log(KEY ? `AI voice on (Gemini model ${MODEL})` : 'AI voice off: set GEMINI_API_KEY (see .env.example). Everything else works.');
 });

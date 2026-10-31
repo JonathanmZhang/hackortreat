@@ -1,15 +1,16 @@
 // Fright Academy: the monster builder, its stats, and the instructor who trains it.
 // The instructor sets goals (what to achieve) and gives hints that nudge, but never says which button or gesture to use.
+// It also keeps the course clock and shows the report card.
 // Loaded before monsters.js, classes.js and script.js; it reads their globals (lightsOn, Monster, Classes, stopHandsFree, resetGame) only at run time.
 const Academy=(function(){
 'use strict';
 const $=id=>document.getElementById(id),KEY='fright-build';
 const OPT={
  species:[
-  {n:'Ghost',e:'👻',cls:'Haunting 101',s:{scare:3,stealth:3,stamina:3},note:'Moves things without touching them. Fright through household chaos.',done:'Training complete! Keep haunting for points, or change your monster.'},
-  {n:'Vampire',e:'🧛',cls:'Scent Matching',s:{scare:4,stealth:3,stamina:2},note:'A creature of the night with a very good nose. Dislikes bright lamps, garlic and reflections.',done:'Training complete! The coven keeps sending orders, or change your monster.'},
-  {n:'Witch',e:'🧙',cls:'Potions',s:{scare:3,stealth:2,stamina:4},note:'Hands-on. Gathers odd ingredients and brews them at the cauldron.',done:'Training complete! The orders keep coming, or change your monster.'},
-  {n:'Werewolf',e:'🐺',cls:'Dodging',s:{scare:4,stealth:1,stamina:3},note:'Loud and strong, and hunted. Silver is the one thing it can\'t shrug off.',done:'Training complete! The hunters are not done with you, or change your monster.'}],
+  {n:'Ghost',e:'👻',cls:'Haunting 101',s:{scare:3,stealth:3,stamina:3},note:'Moves things without touching them. Fright through household chaos.'},
+  {n:'Vampire',e:'🧛',cls:'Scent Matching',s:{scare:4,stealth:3,stamina:2},note:'A creature of the night with a very good nose. Dislikes bright lamps, garlic and reflections.'},
+  {n:'Witch',e:'🧙',cls:'Potions',s:{scare:3,stealth:2,stamina:4},note:'Hands-on. Gathers odd ingredients and brews them at the cauldron.'},
+  {n:'Werewolf',e:'🐺',cls:'Dodging',s:{scare:4,stealth:1,stamina:3},note:'Loud and strong, and hunted. Silver is the one thing it can\'t shrug off.'}],
  colour:[
   {n:'Cyan',h:0x19f0ff,c:'#19f0ff',s:{stealth:1}},
   {n:'Magenta',h:0xff2bd6,c:'#ff2bd6',s:{scare:1}},
@@ -40,13 +41,18 @@ const COURSE={
   {t:'Dodge five in a row.',a:'dodge',n:5,h:['A shot down your lane wants you in another lane.','A line up high and a line down low cannot be outrun. A werewolf has knees and legs for a reason.','Wait until the silver is on its way before you leave the floor.']},
   {t:'Last thirty seconds without a scratch.',a:'clean',h:['A clean run counts on your panel. One hit starts it over.','Stay near the middle lane. It always has somewhere to go.']},
   {t:'Slip a double shot.',a:'double',h:['Two hunters, two lines. One lane is always left.','Look for the lane that stays dark, not for the lines.']},
-  {t:'Survive a full moon.',a:'moonDone',h:['Under a full moon they all come at once, and they do not hesitate. Lose every heart and the round starts over.','A howl at the moon buys a moment of peace, and a moment is all you need.']}],
+  {t:'Survive a full moon.',a:'moonDone',h:['Under a full moon they all come at once, and they do not hesitate. The moon gives your hearts back, once.','A howl at the moon buys a moment of peace, and a moment is all you need.']}],
  Vampire:[
   {t:'Catch a scent.',a:'sniff',h:['A vampire\'s nose finds supper before its fangs do. Visitors wander in now and then.','Drift close to someone and breathe in. It takes a moment.']},
   {t:'Find someone who shares a note with the coven\'s order.',a:'share',h:['Read the order card. It has three notes, but one is enough for now.','Everyone smells different. Try the other rooms.','Garlic hides everything else. Do not waste your breath on those necklaces.']},
   {t:'Bite an exact match.',a:'match',h:['Fangs need the right mood: a dark room and something shining in from outside.','All three notes have to agree with the card, in any order.','A wrong bite will make you sick, so know before you bite.']},
   {t:'Bring the coven three exact matches in a row.',a:'match',n:3,h:['One bad bite and the coven starts counting again.','Stay clear of shiny things on the wall. Vampires and reflections do not mix.','Lamps burn. Keep the rooms you hunt in dark and the window clear.']},
   {t:'Settle a tricky order.',a:'tricky',h:['Two people in this house smell almost the same. Almost.','Sniff everyone before you commit. The difference is a single note.']}]};
+// Report card: every 30 seconds costs a grade, and at 2 minutes the course is failed.
+const BAND=30000,GRADES=['A','B','C','D'],LIMIT=BAND*GRADES.length;
+const REMARK={A:'Top of the class. The faculty is a little afraid of you.',B:'Very good. Something under the bed is proud of you.',C:'You got there. Nobody was in any great danger.',D:'A pass, technically. The visitors barely noticed.'};
+const BURN=2.5; // exposure per second in a lit room, before Stealth. Reaching 100 fails the course.
+let elapsed=0,ended=false,cardT=0,warned=false,lastBand=0;
 let sel={species:0,colour:0,accessory:0},me=null,course=[],idx=0,exposure=0,hintLvl=0,since=0,tipText='',tipUntil=0;
 try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');Object.keys(sel).forEach(k=>{if(Number.isInteger(s[k])&&s[k]>=0&&s[k]<OPT[k].length)sel[k]=s[k]})}catch(e){}
 const A={cd:1,f:1}; // cooldown multiplier (stamina) and fear multiplier (scare), read by script.js and monsters.js
@@ -64,16 +70,18 @@ function paint(){
  $('bNote').textContent=sp.note;$('bClass').textContent='Class: '+sp.cls}
 function step(k,d){const n=OPT[k].length;sel[k]=(sel[k]+d+n)%n;paint()}
 function open(){
+ clearTimeout(cardT);$('report').hidden=true;
  document.body.classList.add('building');document.querySelector('.wrap').inert=true;
  $('builder').hidden=false;paint();$('bGo').focus()}
 function go(){
  try{localStorage.setItem(KEY,JSON.stringify(sel))}catch(e){}
  const sp=OPT.species[sel.species],co=OPT.colour[sel.colour],ac=OPT.accessory[sel.accessory],st=stats();
+ clearTimeout(cardT);$('report').hidden=true;elapsed=0;ended=false;warned=false;lastBand=0;
  Classes.stop();document.body.dataset.species=sp.n.toLowerCase();
  // Hands-free input is the ghost's mode: leaving it releases the camera and the microphone.
  if(sp.n!=='Ghost')stopHandsFree();
  resetGame();
- me={sp:sp.n,name:co.n+' '+sp.n,st,done:sp.done};exposure=0;
+ me={sp:sp.n,name:co.n+' '+sp.n,st,cls:sp.cls};exposure=0;
  course=COURSE[sp.n].map(o=>Object.assign({c:0},o));idx=0;hintLvl=0;since=performance.now();tipText='';tipUntil=0;
  A.cd=1.6-st.stamina*.2;A.f=.5+st.scare*.25; // stamina shortens cooldowns, scare adds fear per action
  Room.setMonster&&Room.setMonster(sp.n,co.h,ac.n);Monster.setSpecies(sp.n);Classes.start(sp.n,st,sp.cls);
@@ -86,23 +94,56 @@ function render(){
  setText('coachWho',me.name+' · Scare '+me.st.scare+' · Stealth '+me.st.stealth+' · Stamina '+me.st.stamina);
  // Goals still to come stay hidden, so the course is something to discover.
  $('coachSteps').innerHTML=course.map((x,i)=>'<li class="'+(i<idx?'done':i===idx?'now':'')+'">'+(i<idx?'✓ '+x.t:i===idx?x.t+(x.n>1?' ('+x.c+'/'+x.n+')':''):'???')+'</li>').join('');
- setText('coachSay',s?s.t:me.done);
+ setText('coachSay',s?s.t:'Training complete!');
  const tipOn=tipText&&performance.now()<tipUntil;
  setText('coachHint',[tipOn?tipText:'',s&&hintLvl>0?'Hint: '+s.h[Math.min(hintLvl,s.h.length)-1]:''].filter(Boolean).join(' '));
  $('hintBtn').disabled=!s;
  $('hintBtn').textContent=s&&hintLvl>=s.h.length?'No more hints':'Hint'}
-function advance(){idx++;hintLvl=0;since=performance.now();tipText='';Sfx.chime();render();Classes.goal(idx)}
+function advance(){idx++;hintLvl=0;since=performance.now();tipText='';Sfx.chime();render();if(idx<course.length)Classes.goal(idx);else finish(true)}
 function on(ev,d){
  if(!me)return;const s=course[idx];
  if(!s||s.a!==ev||(s.ok&&!s.ok(d||{})))return;
  if(++s.c<(s.n||1)){Sfx.chime();render();return}
  advance()}
+const fmt=ms=>{const t=Math.floor(ms/1000);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+function paintClock(){setText('coachClock','Time '+fmt(elapsed)+' · Grade if you finish now: '+GRADES[Math.min(GRADES.length-1,elapsed/BAND|0)])}
+// Runs off the classes' frame clock, so it stops in a hidden tab and while a dialog is open.
+function clock(dt){
+ if(!me||ended)return;
+ elapsed+=dt;paintClock();
+ const b=elapsed/BAND|0;
+ if(b!==lastBand&&b<GRADES.length){lastBand=b;Sfx.fizzle();tip('Time is passing. The best you can get now is a '+GRADES[b]+'.')}
+ if(elapsed>=LIMIT)finish(false,'Two minutes are up, and the course is not finished.')}
+// The end of a course. Everything freezes at once, but the class is only torn down when the card appears,
+// because this can be called from the middle of a class's own code.
+function finish(won,why){
+ if(ended)return;ended=true;
+ document.body.classList.add('building');document.querySelector('.wrap').inert=true;
+ const grade=won?GRADES[Math.min(GRADES.length-1,elapsed/BAND|0)]:'F',card={grade,won,why,time:elapsed,done:idx,goals:course.map(x=>x.t)};
+ if(won)Sfx.win();else Sfx.lose();
+ // The score is read here, not above: the action that finished the course may still be awarding its points.
+ cardT=setTimeout(()=>{card.score=$('score').textContent;card.label=$('scoreLabel').textContent;Classes.stop();resetGame();showCard(card)},won?900:700)}
+function lose(why){finish(false,why)}
+function showCard(c){
+ $('rcWho').textContent=me.name+' · '+me.cls;
+ $('rcGrade').textContent=c.grade;$('rcGrade').setAttribute('role','img');$('rcGrade').setAttribute('aria-label','Grade '+c.grade);
+ $('rcVerdict').textContent=c.won?REMARK[c.grade]:'You lose. '+c.why;
+ $('rcStats').innerHTML='<li><span>Time</span><span>'+fmt(c.time)+'</span></li><li><span>'+c.label+'</span><span>'+c.score+'</span></li><li><span>Objectives</span><span>'+c.done+' of '+c.goals.length+'</span></li>';
+ $('rcGoals').innerHTML=c.goals.map((t,i)=>'<li class="'+(i<c.done?'done':'')+'">'+(i<c.done?'✓ '+t:'✗ '+(i===c.done?t:'???'))+'</li>').join('');
+ document.querySelector('.rcard').classList.toggle('fail',!c.won);
+ $('rcMain').textContent=c.won?'Change monster':'Try again';$('rcAlt').textContent=c.won?'Play again':'Change monster';
+ $('rcMain').onclick=c.won?open:go;$('rcAlt').onclick=c.won?go:open;
+ $('report').hidden=false;$('rcMain').focus()}
 // A streak goal starts over (a bad bite, a silver bullet).
 function reset(ev){const s=course[idx];if(s&&s.a===ev&&s.c){s.c=0;render()}}
 // A one-off in-world remark from the instructor (shown for a few seconds).
 function tip(t){if(!me)return;tipText=t;tipUntil=performance.now()+9000;render()}
 // Vampire exposure from the monster side (a mirror's glare, a lamp, garlic).
-function hurt(n){if(!me||me.sp!=='Vampire')return;exposure=Math.min(100,exposure+n);$('exp').value=exposure}
+function hurt(n){if(!me||me.sp!=='Vampire')return;exposure=Math.min(100,exposure+n);$('exp').value=exposure;checkBurn()}
+function checkBurn(){
+ if(exposure>=100){lose('You stayed in the light too long and burned to ash.');return}
+ if(exposure>=70&&!warned){warned=true;Sfx.fizzle();tip('You are starting to smoke. Something in this room is far too bright.')}
+ else if(exposure<40)warned=false}
 $('hintBtn').onclick=()=>{const s=course[idx];if(!s)return;hintLvl=Math.min(s.h.length,hintLvl+1);since=performance.now();render()}
 // Stuck for a while? The instructor offers a nudge on its own.
 setInterval(()=>{
@@ -113,12 +154,12 @@ setInterval(()=>{
  if(hintLvl<1&&now-since>25000){hintLvl=1;render()}
  else if(hintLvl<2&&hintLvl<s.h.length&&now-since>60000){hintLvl=2;render()}
 },1000);
-// Vampires burn while the room is lit. Stealth slows the burn.
+// Vampires burn while the room is lit, and burning up fails the course. Stealth slows the burn.
 setInterval(()=>{
  if(!me||me.sp!=='Vampire'||document.hidden||document.body.classList.contains('building'))return;
- exposure=Math.max(0,Math.min(100,exposure+(lightsOn?7*(1.6-me.st.stealth*.2):-10)*.2));
+ exposure=Math.max(0,Math.min(100,exposure+(lightsOn?BURN*(1.6-me.st.stealth*.2):-10)*.2));
  $('exp').value=exposure;
- if(exposure>=100){exposure=0;Sfx.scare();log('You burned in the light! Back into the dark.');tip('You burned! Somewhere in this room, a lamp is to blame.')}
+ checkBurn();
 },200);
 ['species','colour','accessory'].forEach(k=>{
  const r=document.createElement('div');r.className='brow';
@@ -126,5 +167,5 @@ setInterval(()=>{
  const b=r.querySelectorAll('button');b[0].onclick=()=>step(k,-1);b[1].onclick=()=>step(k,1);$('bRows').appendChild(r)});
 $('bGo').onclick=go;$('reBuild').onclick=open;
 open();
-return Object.assign(A,{on,render,tip,hurt,reset,goal:()=>idx})
+return Object.assign(A,{on,render,tip,hurt,reset,clock,lose,goal:()=>idx})
 })();

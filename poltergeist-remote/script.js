@@ -96,6 +96,7 @@ addEventListener('keydown',e=>{if(document.body.classList.contains('building'))r
 
 // Hands-free input (camera, face, voice, AI voice) is the ghost's mode, because the ghost is the one monster that can't touch anything.
 const isGhost=()=>document.body.dataset.species==='ghost';
+const handsLive=()=>isGhost()&&!document.body.classList.contains('building'); // nothing fires behind the builder or the report card
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -131,7 +132,7 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 // ---------- Hand gestures ----------
 const hist=[];
 function detect(lm){
- if(!isGhost())return;
+ if(!handsLive())return;
  const scale=dist(lm[0],lm[9])||.1;
  const pinch=dist(lm[4],lm[8])/scale<0.28;
  const curled=[[8,6],[12,10],[16,14],[20,18]].every(([t,p])=>dist(lm[t],lm[0])<dist(lm[p],lm[0]));
@@ -153,7 +154,7 @@ function detect(lm){
 const FACE={nod:0.09,tilt:18,mouth:0.12,turn:0.3,hold:350};
 const pitchHist=[];let tiltArmed=true,tiltSince=0,mouthSince=0,yawArmed=true,yawSince=0;
 function detectFace(lm){
- if(!isGhost())return;
+ if(!handsLive())return;
  const now=performance.now(),faceH=dist(lm[10],lm[152])||.1;
  // Open mouth (hold briefly) -> slam the door
  if(dist(lm[13],lm[14])/faceH>FACE.mouth){
@@ -198,7 +199,7 @@ function detectFace(lm){
 // ---------- Voice (Web Speech API; Chrome / Edge) ----------
 // Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
 function voiceCmd(t){
- if(!isGhost())return false;
+ if(!handsLive())return false;
  t=t.toLowerCase();
  let m;const said=()=>capVia='"'+m[0][0].toUpperCase()+m[0].slice(1)+'"';
  // goRoom skips act() when already in that room, so clear capVia here.
@@ -229,7 +230,7 @@ function setChannel(n,src){if(n-1!==ch)channel(n-1-ch,src)}
 async function runPlan(actions,src){
  const id=++planId; // a newer spoken plan cancels an older one that is still running
  for(const a of actions){
-  if(id!==planId||!isGhost())return;
+  if(id!==planId||!handsLive())return;
   if(a.type==='wait'){await sleep(a.seconds*1000);continue}
   if(a.type==='lights')setLights(a.on,src);
   else if(a.type==='channel')setChannel(a.channel,src);
@@ -238,17 +239,17 @@ async function runPlan(actions,src){
   else if(a.type==='power')Monster.use(src);
   await sleep(400)}}
 async function aiCommand(t){
- if(!isGhost())return;
+ if(!handsLive())return;
  const heard=$('heard');heard.textContent='Thinking: "'+t+'"';
  try{
   const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({text:t,state:{room:cur+1,lights:lightsOn,channel:ch+1}})});
   if(!r.ok)throw new Error('http '+r.status);
   const p=await r.json();
-  if(!isGhost())return; // the monster changed while the request was out
+  if(!handsLive())return; // the monster changed or the course ended while the request was out
   if(!Array.isArray(p.actions)||!p.actions.length){heard.textContent=p.message?'Ghost: '+p.message:'Heard: '+t+' (not a room command)';return}
   heard.textContent='Ghost: '+(p.message||'On it.');runPlan(p.actions,'voice AI')
- }catch(e){if(!isGhost())return;heard.textContent='AI unavailable, trying keywords. Heard: '+t;voiceCmd(t)}}
+ }catch(e){if(!handsLive())return;heard.textContent='AI unavailable, trying keywords. Heard: '+t;voiceCmd(t)}}
 
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,voiceOn=false;

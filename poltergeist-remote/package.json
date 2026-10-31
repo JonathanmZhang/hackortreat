@@ -1,8 +1,8 @@
 {
-  "name": "poltergeist-remote",
+  "name": "fright-academy",
   "version": "1.0.0",
   "private": true,
-  "description": "A ghost can't touch a light switch: control a haunted room with hands, voice and head movements.",
+  "description": "Four monsters, four classes and a report card. The ghost can't touch a light switch, so it controls the room with hands, voice and head movements.",
   "scripts": {
     "start": "node server.js"
   },
