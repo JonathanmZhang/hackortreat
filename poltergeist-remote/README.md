@@ -14,6 +14,10 @@ Keyboard fallbacks: `L` lights, `←` `→` channel, `D` door.
 
 All inputs share one cooldown per action, so a nod plus a spoken "Lights" at the same moment only flicks the lights once.
 
+## Fright Academy (monster builder)
+
+The page opens on a carousel where you build a monster: species (ghost or vampire), colour and accessory. The build sets three stats: **scare** (more fear per action), **stealth** (slows a vampire's sunlight burn) and **stamina** (shorter cooldowns). The **Instructor** panel then trains your monster with a short course of objectives. Ghosts learn to flick, swipe and slam, then scare a visitor. Vampires must switch the lights off, close the **blinds** (key `B`, button, or say "blinds") and keep their **sunlight exposure** low while scaring. **Change monster** reopens the carousel; your last build is remembered.
+
 ## Rooms and visitors
 
 There are three rooms: living room, bedroom and kitchen. Every so often a visitor walks in through the door of a random room, an alert pops up with a **Go there** button and a red dot appears on that room's tab. Switch rooms and haunt them: flicking the lights or changing the channel adds a little fear, slamming the door scares them off at once. Points: +10 per fright, +60 when a visitor flees. Visitors who aren't scared leave on their own after about 30 seconds.
@@ -82,6 +86,7 @@ Notes:
 - Cooldowns: the millisecond values in `ready('lights', 1200)` and similar
 - Voice words: the patterns in `voiceCmd()`
 - Sounds: each effect is a short function in `audio.js` (`slam()`, `whoo()`, `scream()` and so on); the heartbeat range is in `beat()`
+- Monsters: species, colours, accessories and training courses are plain objects at the top of `academy.js`
 - Colours: `--cyan`, `--mag` and `--acid` at the top of `style.css`
 - AI voice: the model (`GEMINI_MODEL` environment variable) and the instructions in `SYSTEM` in `server.js`; add a new action by extending `TOOL`, `clean()` and `runPlan()`
 - TV channels: the `CH` array at the top of `script.js`
@@ -93,6 +98,7 @@ Notes:
 index.html   page markup
 style.css    styling
 script.js    hand, voice and head/face detection, plus controls and the minimap
+academy.js   monster builder, stats and the instructor's training course
 audio.js     all sound effects and ambience (Web Audio), plus mute and volume
 room3d.js    3D haunted room (Three.js)
 server.js    optional Node server: serves the site and powers AI voice

@@ -2,10 +2,10 @@ const $=id=>document.getElementById(id);
 const logEl=$('log');
 $('lights').innerHTML='<i></i>'.repeat(48); // string lights; the CSS makes them blink
 const CH=["Ch 1<br>Static","Ch 2<br>Haunted Home Makeover","Ch 3<br>Séance Shopping","Ch 4<br>Ghost News at Nine"];
-let ch=0,lightsOn=true,plugOn=true,cool={};
-const ROOMS=['Living room','Bedroom','Kitchen'],RS=ROOMS.map(()=>({lights:true,ch:0}));let cur=0,score=0,alertT=0;
+let ch=0,lightsOn=true,blindsOn=false,plugOn=true,cool={};
+const ROOMS=['Living room','Bedroom','Kitchen'],RS=ROOMS.map(()=>({lights:true,ch:0,blinds:false}));let cur=0,score=0,alertT=0;
 function log(t){logEl.textContent=t}
-function ready(k,ms){const n=performance.now();if(cool[k]&&n-cool[k]<ms)return false;cool[k]=n;return true}
+function ready(k,ms){ms*=Academy.cd;const n=performance.now();if(cool[k]&&n-cool[k]<ms)return false;cool[k]=n;return true}
 
 // ---------- Gesture caption ----------
 // Visual feedback above the camera. #log is the aria-live announcement, so the caption is aria-hidden.
@@ -78,27 +78,29 @@ function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
-function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
-function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
-function slam(src){Room.slam();Sfx.slam();
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);Academy.on('lights');if(!lightsOn)Academy.on('lightsOff');act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();Academy.on('channel');act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
+function slam(src){Room.slam();Sfx.slam();Academy.on('door');
  plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
+function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);if(blindsOn)Academy.on('blinds');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
+$('bB').onclick=()=>blinds('button');
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
-addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
 const tabs=$('tabs');
 // Minimap on the TV screen: glowing floor plan, ghost dot in your room, magenta dot where a visitor is.
 const minis=[...document.querySelectorAll('#mini .mr')],here=[false,false,false]; // here[i]: a visitor is in room i
-function sync(){minis.forEach((g,k)=>{g.classList.toggle('here',k===cur);g.classList.toggle('vis',here[k])});Sfx.heart(here[cur])} // heartbeat runs while a visitor is in your room
+function sync(){minis.forEach((g,k)=>{g.classList.toggle('here',k===cur);g.classList.toggle('vis',here[k])});Sfx.heart(here[cur]);Academy.render()} // heartbeat runs while a visitor is in your room
 function ringMini(i){const g=minis[i];g.classList.remove('ping');void g.getBoundingClientRect();g.classList.add('ping')}
 minis.forEach((g,i)=>{g.onclick=()=>goRoom(i,'button');g.querySelector('.ring').addEventListener('animationend',()=>g.classList.remove('ping'))});
 ROOMS.forEach((n,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+' '+n;b.onclick=()=>goRoom(i,'button');tabs.appendChild(b)});
 function paintTabs(){[...tabs.children].forEach((b,i)=>b.setAttribute('aria-pressed',i===cur))}
-function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;
- Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);paintTabs();sync();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
+function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch,blinds:blindsOn};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;blindsOn=RS[i].blinds;
+ Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);Room.blinds&&Room.blinds(blindsOn);paintTabs();sync();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
 function nextRoom(src){goRoom((cur+1)%ROOMS.length,src)}
-function haunt(n){const r=Room.scare(n);if(!r.hit)return;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
+function haunt(n){const r=Room.scare(n<3?n*Academy.f:n);if(!r.hit)return;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();Academy.on('scare');if(r.fled)Academy.on('flee');score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
 function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
 function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
 Room.on=(type,i)=>{const n=ROOMS[i];
@@ -170,6 +172,7 @@ function voiceCmd(t){
  let m;const said=()=>capVia='"'+m[0][0].toUpperCase()+m[0].slice(1)+'"';
  // goRoom skips act() when already in that room, so clear capVia here.
  const go=i=>{said();goRoom(i,'voice');capVia=null;return true};
+ if(m=t.match(/\b(blinds?|curtains?|shades?)\b/)){if(ready('blinds',1000)){said();blinds('voice')}return true}
  if(m=t.match(/\bliving\b/))return go(0);
  if(m=t.match(/\bbed(room)?\b/))return go(1);
  if(m=t.match(/\bkitchen\b/))return go(2);

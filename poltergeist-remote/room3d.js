@@ -4,7 +4,7 @@ const host=document.getElementById('room');
 let R;
 try{R=new THREE.WebGLRenderer({antialias:true})}catch(e){
  host.insertAdjacentHTML('beforeend','<p style="padding:16px;color:#9a8fb0">3D view needs WebGL. Gestures still work.</p>');
- window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},scare(){return{hit:false}}};return}
+ window.Room={lights(){},tv(){},slam(){},ghost(){},setRoom(){},blinds(){},skin(){},scare(){return{hit:false}}};return}
 const W=()=>host.clientWidth||640,H=()=>host.clientHeight||400;
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(W(),H(),false);
 R.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';
@@ -38,6 +38,9 @@ add(new THREE.PlaneGeometry(1.6,2),new THREE.MeshBasicMaterial({color:0x14204a})
 add(new THREE.CircleGeometry(.35,24),new THREE.MeshBasicMaterial({color:0xfff1c4}),-2.3,3.5,-2.96);
 [[1.8,.1,0,1.05],[1.8,.1,0,-1.05],[.1,2.2,.85,0],[.1,2.2,-.85,0],[1.7,.06,0,0],[.06,2,0,0]]
  .forEach(a=>add(bx(a[0],a[1],.1),fr,-2.6+a[2],3.1+a[3],-2.94));
+// blinds (closed = slats over the window; the vampire's friend)
+const blindsG=new THREE.Group();blindsG.visible=false;S.add(blindsG);
+for(let i=0;i<9;i++)add(bx(1.7,.2,.04),M(0x3a2c55),-2.6,2.15+i*.23,-2.88,blindsG);
 
 // door (hinged on the left edge)
 add(bx(1.7,3.5,.1),new THREE.MeshBasicMaterial({color:0x0f2a22}),3.05,1.75,-2.97);
@@ -288,6 +291,8 @@ new ResizeObserver(()=>{R.setSize(W(),H(),false);C.aspect=W()/H();C.updateProjec
 
 window.Room={
  setRoom,scare,
+ blinds(c){blindsG.visible=!!c},
+ skin(h){gM.color.setHex(h);gM.emissive.setHex(h)},
  lights(on){amb.intensity=on?.7:.12;lampL.intensity=on?1.4:0;shadeM.emissiveIntensity=on?.9:0;gM.emissiveIntensity=on?.3:.9},
  tv(text){tvT=text.split('<br>');drawTV()},
  slam(){dk=0;dkK=.4;shake=.6;setTimeout(()=>{dk=-1.15;dkK=.05},1400)},

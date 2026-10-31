@@ -12,6 +12,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="builder" id="builder" role="dialog" aria-modal="true" aria-labelledby="bTitle" hidden>
+ <div class="bcard">
+  <h2 id="bTitle">Fright Academy</h2>
+  <p>Build your monster. The instructor trains it for the job.</p>
+  <div class="bprev" aria-hidden="true"><span id="bBody"></span><span id="bAcc"></span></div>
+  <div id="bRows"></div>
+  <ul class="bstats" id="bStats"></ul>
+  <p id="bNote"></p>
+  <button class="start" id="bGo" type="button">Start training</button>
+ </div>
+</div>
 <div class="lights" id="lights" aria-hidden="true"></div>
 <div class="wrap">
 <header>
@@ -68,6 +79,7 @@
    <button id="bL">Lights (L)</button>
    <button id="bC">Next channel (→)</button>
    <button id="bD">Door (D)</button>
+   <button id="bB">Blinds (B)</button>
   </div>
   <div class="legend">
    <table>
@@ -78,13 +90,22 @@
      <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
      <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
+     <tr><th scope="row">Close the blinds</th><td>&ndash;</td><td>"Blinds"</td><td>&ndash;</td></tr>
      <tr id="aiRow" hidden><th scope="row">Anything else (AI)</th><td>&ndash;</td><td>"Set the mood for a scary movie night"</td><td>&ndash;</td></tr>
     </tbody>
    </table>
   </div>
  </main>
 
- <aside class="col r" aria-label="Command history">
+  <aside class="col r" aria-label="Instructor and command history">
+  <section class="coach" id="coach" aria-labelledby="coachTitle">
+   <h2 id="coachTitle" tabindex="-1">Instructor</h2>
+   <p id="coachWho"></p>
+   <p id="coachSay" aria-live="polite"></p>
+   <ol id="coachSteps"></ol>
+   <label id="expWrap" hidden>Sunlight exposure <progress id="exp" max="100" value="0"></progress></label>
+   <button id="reBuild" type="button">Change monster</button>
+  </section>
   <details class="history" id="history">
    <summary>Command history (<span id="histCount">0</span>)</summary>
    <p id="histEmpty">Nothing yet. Commands show up here as you use them.</p>
@@ -99,6 +120,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="room3d.js"></script>
 <script src="audio.js"></script>
+<script src="academy.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
