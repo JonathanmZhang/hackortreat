@@ -14,13 +14,8 @@
 </header>
 <div class="grid">
  <div>
-  <div class="room on" id="room">
-   <div class="floor"></div>
-   <div class="lamp"><b></b><i></i></div>
-   <div class="tv" id="tv"><span>Ch 1<br>Static</span></div>
-   <div class="door shut" id="door"><div></div></div>
+  <div class="room" id="room">
    <div class="plug">Smart plug: <b id="plugState">ON</b></div>
-   <div class="dark"></div>
   </div>
   <p id="log" aria-live="polite">Waiting for a gesture.</p>
  </div>
@@ -56,6 +51,8 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="room3d.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

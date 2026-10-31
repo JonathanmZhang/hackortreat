@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const room=$('room'),tv=$('tv'),door=$('door'),logEl=$('log');
+const logEl=$('log');
 const CH=["Ch 1<br>Static","Ch 2<br>Haunted Home Makeover","Ch 3<br>Séance Shopping","Ch 4<br>Ghost News at Nine"];
 let ch=0,lightsOn=true,plugOn=true,cool={};
 function log(t){logEl.textContent=t}
@@ -8,10 +8,10 @@ function thud(){try{const a=new (window.AudioContext||window.webkitAudioContext)
  o.frequency.setValueAtTime(110,a.currentTime);o.frequency.exponentialRampToValueAtTime(35,a.currentTime+.25);
  g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.3);
  o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.3)}catch(e){}}
-function lights(){lightsOn=!lightsOn;room.classList.toggle('on',lightsOn);room.classList.toggle('off',!lightsOn);log('Lights '+(lightsOn?'on':'off')+'.')}
-function channel(d){ch=(ch+d+CH.length)%CH.length;tv.querySelector('span').innerHTML=CH[ch];tv.classList.remove('flick');void tv.offsetWidth;tv.classList.add('flick');log('Channel '+(ch+1)+'.')}
-function slam(){door.classList.remove('shut','shake');void door.offsetWidth;door.classList.add('shut','shake');thud();
- plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{door.classList.remove('shut');plugOn=true;$('plugState').textContent='ON'},1400);log('Door slammed. Smart plug triggered.')}
+function lights(){lightsOn=!lightsOn;Room.lights(lightsOn);log('Lights '+(lightsOn?'on':'off')+'.')}
+function channel(d){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);log('Channel '+(ch+1)+'.')}
+function slam(){Room.slam();thud();
+ plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);log('Door slammed. Smart plug triggered.')}
 $('bL').onclick=lights;$('bC').onclick=()=>channel(1);$('bD').onclick=slam;
 addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights();if(e.key==='ArrowRight')channel(1);if(e.key==='ArrowLeft')channel(-1);if(e.key==='d'||e.key==='D')slam()});
 
@@ -103,12 +103,12 @@ $('startBtn').onclick=async()=>{
   const base='https://cdn.jsdelivr.net/npm/@mediapipe/';
   const hands=new Hands({locateFile:f=>base+'hands@0.4.1675469240/'+f});
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.5});
-  hands.onResults(r=>{handLm=r.multiHandLandmarks&&r.multiHandLandmarks[0]||null;if(handLm)detect(handLm);render()});
+  hands.onResults(r=>{handLm=r.multiHandLandmarks&&r.multiHandLandmarks[0]||null;if(handLm){Room.ghost(1-handLm[9].x,handLm[9].y);detect(handLm)}render()});
   let face=null;
   if(typeof FaceMesh!=='undefined'){
    face=new FaceMesh({locateFile:f=>base+'face_mesh@0.4.1633559619/'+f});
    face.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.6,minTrackingConfidence:.5});
-   face.onResults(r=>{faceLm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0]||null;if(faceLm)detectFace(faceLm);render()});
+   face.onResults(r=>{faceLm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0]||null;if(faceLm){if(!handLm)Room.ghost(1-faceLm[1].x,faceLm[1].y);detectFace(faceLm)}render()});
   }else log('Face model script was blocked. Hand, voice, buttons and keys still work.');
   msg.textContent='Loading models…';
   const loop=async()=>{
