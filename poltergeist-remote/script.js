@@ -248,7 +248,7 @@ function detectFace(lm){
 }
 
 // ---------- Voice (Web Speech API; Chrome / Edge) ----------
-// Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
+// Say the names on the page: "Lights", "Next", "Slam" (or "Door"), "Music", "Pause".
 function voiceCmd(t){
  t=t.toLowerCase();
  let m;const said=()=>capVia='"'+m[0][0].toUpperCase()+m[0].slice(1)+'"';
@@ -324,7 +324,7 @@ $('voiceBtn').onclick=()=>{
  if(!SR){heard.textContent='Voice needs Chrome or Edge. Use hand, head, buttons or keys instead.';return}
  rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
  let done={};
- rec.onstart=()=>{done={};heard.textContent=aiOn()?'Listening… try "set the mood for a scary movie night".':'Listening… say Lights, Channel or Slam.'};
+ rec.onstart=()=>{done={};heard.textContent=aiOn()?'Listening… try "set the mood for a scary movie night" or "play something spooky".':'Listening… say Lights, Next, Slam, Music or Pause.'};
  rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){
   if(done[i])continue;const r=e.results[i],t=r[0].transcript.trim();
   heard.textContent='Heard: '+t;

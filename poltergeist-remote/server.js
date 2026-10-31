@@ -185,6 +185,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Poltergeist Remote: http://localhost:${PORT}`);
+  console.log(`Poltergeist Remote: http://127.0.0.1:${PORT}`);
   console.log(KEY ? `AI voice on (Gemini model ${MODEL})` : 'AI voice off: set GEMINI_API_KEY (see .env.example). Everything else works.');
 });
