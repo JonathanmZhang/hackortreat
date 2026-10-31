@@ -138,6 +138,7 @@ function paint(){
 function emit(){paint();subs.forEach(cb=>{try{cb(state())}catch(e){}})}
 const state=()=>Object.assign({},s,{progress:pos()});
 const btn=$('jConnect');if(btn)btn.onclick=()=>{if(s.connected)dropLogin();else connect()};
+if($('jArt'))$('jArt').onerror=()=>{$('jArt').hidden=true}; // a cover that won't load leaves the record showing, not its alt text
 
 // ---------- Start: nothing runs at all until a Client ID is pasted in ----------
 paint();
