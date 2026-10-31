@@ -15,7 +15,7 @@ const MSG={setup:"Spotify isn't set up yet",device:'Open Spotify on any device a
 const isSet=()=>!!SPOTIFY_CLIENT_ID&&SPOTIFY_CLIENT_ID!=='PASTE_CLIENT_ID_HERE';
 const playback=()=>({playing:false,track:'',trackId:'',artist:'',album:'',albumArt:'',image:'',playlist:'',device:'',progress:0,duration:0});
 let s=Object.assign({connected:false,msg:''},playback());
-let tok=null,refreshing=null,waitUntil=0,seq=0,polledAt=0,holdUntil=0,ctxId='';
+let tok=null,refreshing=null,waitUntil=0,seq=0,polledAt=0,holdUntil=0,ctxId='',badArt='';
 const lists={},subs=[];
 
 // ---------- Storage (can be blocked, so every access is guarded) ----------
@@ -131,14 +131,14 @@ function paint(){
  btn.hidden=!isSet();btn.textContent=s.connected?'Disconnect':'Connect Spotify';
  $('jTrack').textContent=s.track||'Nothing playing';$('jArtist').textContent=s.artist;$('jList').textContent=s.playlist;$('jDevice').textContent=s.device&&'on '+s.device;
  if(art.getAttribute('src')!==s.image){if(s.image)art.src=s.image;else art.removeAttribute('src')}
- art.hidden=!s.image;art.alt=s.playlist&&'Cover art: '+s.playlist;
+ art.hidden=!s.image||s.image===badArt;art.alt=s.playlist&&'Cover art: '+s.playlist;
  play.textContent=s.playing?'⏸':'▶';play.setAttribute('aria-label',s.playing?'Pause':'Play');
  $('jStatus').textContent=isSet()?s.msg||(s.connected?'':'Connect to work the jukebox with gestures and voice.'):MSG.setup;
  paintBar()}
 function emit(){paint();subs.forEach(cb=>{try{cb(state())}catch(e){}})}
 const state=()=>Object.assign({},s,{progress:pos()});
 const btn=$('jConnect');if(btn)btn.onclick=()=>{if(s.connected)dropLogin();else connect()};
-if($('jArt'))$('jArt').onerror=()=>{$('jArt').hidden=true}; // a cover that won't load leaves the record showing, not its alt text
+if($('jArt'))$('jArt').onerror=()=>{badArt=$('jArt').getAttribute('src');$('jArt').hidden=true}; // a cover that won't load leaves the record showing, not its alt text
 
 // ---------- Start: nothing runs at all until a Client ID is pasted in ----------
 paint();
