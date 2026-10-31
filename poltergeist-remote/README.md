@@ -7,16 +7,12 @@ A Halloween hackathon project: a ghost can't touch a light switch, so everything
 | Action | Hand | Voice (say) | Head & face |
 | --- | --- | --- | --- |
 | Flick the lights | Pinch (thumb + index) | "Lights" (or "Flick") | Nod |
-| Next / previous on whatever has focus (TV or jukebox) | Swipe hand sideways | "Next", "Previous" or "Back" | Tilt head right = next, left = previous |
-| Change the TV channel, whatever has focus | | "Next channel", "Previous channel", "Channel" | |
-| Change the song, whatever has focus | | "Next song", "Previous song", "Skip" | |
-| Switch between TV and jukebox | Horns 🤘 (index and pinky up, held briefly) | "TV" / "Television", "Music" / "Jukebox", "Switch" | Raise your eyebrows for a moment |
-| Play / pause music | Open palm, held still for 1 second | "Play", "Pause", "Stop", "Music on", "Music off", "Spooky music" | |
+| Change the TV channel | Swipe hand sideways | "Channel" (or "Next"; "Previous" / "Back" goes backwards) | Tilt head right = next, left = previous |
 | Slam the door (and trigger the smart plug) | Fist | "Slam" (or "Door") | Open mouth wide for a moment |
 
 Monster power and grabbing: **thumbs up**, saying "bite", "cast", "howl" or "wail", **turning your head** for a moment, or `P` uses your monster's power. **Pointing** a finger, saying "grab" (or "grab the skull") or `G` grabs the nearest ingredient (witch only; hovering over one for a moment also works).
 
-Keyboard fallbacks: `L` lights, `←` `→` next / previous, `D` door, `B` blinds, `P` power, `G` grab, `M` switch TV / jukebox, `Space` play / pause.
+Keyboard fallbacks: `L` lights, `←` `→` channel, `D` door, `B` blinds, `P` power, `G` grab.
 
 All inputs share one cooldown per action, so a nod plus a spoken "Lights" at the same moment only flicks the lights once.
 
@@ -39,20 +35,6 @@ There are three rooms: living room, bedroom and kitchen. Every so often a visito
 
 Switch rooms with the tabs, keys `1` `2` `3`, a **peace sign** (index and middle finger up) or by saying "living room", "bedroom" or "kitchen". Each room remembers its own lights and TV channel.
 
-## Haunted Jukebox (Spotify)
-
-The ghost possesses one thing at a time, shown by the **Possessing** pill on the screen. Next and previous go to whichever has focus, so with the jukebox possessed a swipe, a head tilt or saying "next" changes the song and leaves the TV alone, and the reverse. Play and pause work whatever has focus. Changing the song or playing and pausing in a room with a visitor scares them too, and the ambience drops to about 25% while music plays.
-
-The site controls Spotify on a device you already have; it doesn't play audio itself. It logs in from the browser (Authorization Code with PKCE), so there's no client secret and `server.js` isn't involved. Until a Client ID is added, the panel says "Spotify isn't set up yet" and everything else works as normal.
-
-Set it up:
-
-1. Create an app at [developer.spotify.com](https://developer.spotify.com/dashboard). When asked which APIs you'll use, tick **Web API**.
-2. Add these redirect URIs, exactly as written: `https://<app>.onrender.com/` and `http://127.0.0.1:8000/`. Spotify doesn't accept `localhost`, so open the site at `127.0.0.1` when running it locally.
-3. Paste the Client ID into `SPOTIFY_CLIENT_ID` at the top of `spotify.js`. Optionally set `HAUNT_PLAYLIST` to a `spotify:playlist:...` URI, which starts when you say "spooky music" or ask the AI for something spooky.
-4. A new app is in development mode: add each person who will use it (up to 5) to the app's allowlist under **User Management**. The app's owner needs Spotify Premium.
-5. Start playing something in Spotify on any device, then click **Connect Spotify** in the jukebox panel.
-
 ## Look and sound
 
 The page is a neon graveyard: the 3D room plays on a dark crypt-green CRT TV in the middle, with cyan, magenta and acid-green neon outlines, tombstone-shaped panels and blinking string lights along the top. A glowing floor-plan minimap sits in the top right of the screen: a cyan dot marks your room, a magenta dot marks a visitor, and a pulsing ring shows where one just arrived. Click a room on the minimap to go there.
@@ -73,7 +55,7 @@ Open **Command history** under the room to see every action so far (newest first
 
 ## AI voice commands (free-form)
 
-Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Gemini turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, your monster power, grabbing an ingredient, music when Spotify is connected, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
+Say things like "set the mood for a scary movie night" or "scare whoever is in the kitchen" and Gemini turns the phrase into a short list of actions (lights, TV channel, door slam, room switch, your monster power, grabbing an ingredient, with dramatic pauses). Short keyword commands such as "Lights" or "Slam" still work instantly.
 
 How it works: the browser sends the finished phrase to `server.js` (`/api/interpret`), which calls the Gemini API with your key and a fixed set of allowed actions. The key never reaches the browser, the server only accepts known actions in range from the model's answer, and requests are rate-limited to 20 per minute per address. If the server or the API is unavailable, voice falls back to the keywords. Spoken phrases are only sent when the **AI voice** checkbox is on, and the server doesn't log them.
 
@@ -111,8 +93,7 @@ Notes:
 ## Customize
 
 - Hand sensitivity: thresholds in `detect()` in `script.js`
-- Horns and open-palm hold times and wrist drift: the `HOLD` object above `detect()`
-- Head and face sensitivity: the `FACE` object above `detectFace()` (`nod`, `tilt` degrees, `mouth`, `brow`, `hold` milliseconds)
+- Head and face sensitivity: the `FACE` object above `detectFace()` (`nod`, `tilt` degrees, `mouth`, `hold` milliseconds)
 - Cooldowns: the millisecond values in `ready('lights', 1200)` and similar
 - Voice words: the patterns in `voiceCmd()`
 - Sounds: each effect is a short function in `audio.js` (`slam()`, `whoo()`, `scream()` and so on); the heartbeat range is in `beat()`
@@ -132,7 +113,6 @@ script.js    hand, voice and head/face detection, plus controls and the minimap
 academy.js   monster builder, stats and the instructor (goals and hints)
 monsters.js  each monster's power: bite, cast, howl, wail, grabbing
 audio.js     all sound effects and ambience (Web Audio), plus mute and volume
-spotify.js   Spotify login and controls (PKCE, no secret), plus the jukebox's now-playing display
 room3d.js    3D haunted room and the four monster models (Three.js)
 server.js    optional Node server: serves the site and powers AI voice
 package.json `npm start` runs server.js (no dependencies)

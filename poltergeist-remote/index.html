@@ -27,7 +27,7 @@
 <div class="wrap">
 <header>
 <h1>Poltergeist Remote</h1>
-<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright. Connect Spotify and the ghost can possess the jukebox too.</p>
+<p>A ghost can't touch a light switch. Wave a hand, nod your head or just say the word, and the room obeys: no contact, no reaching, no fine motor control. Visitors wander into the house now and then: switch rooms and give them a fright.</p>
 </header>
 <div class="grid">
  <aside class="col l" aria-label="Camera and voice">
@@ -58,7 +58,6 @@
     <div class="score">Scares: <b id="score">0</b></div>
     <div class="held" id="held" role="status" hidden></div>
     <div class="plug">Smart plug: <b id="plugState">ON</b></div>
-    <div class="possess" aria-live="polite">👻 Possessing: <b id="possessT">TV</b></div>
     <svg class="mini" id="mini" viewBox="0 0 120 86" aria-hidden="true">
      <path class="pass" d="M30 40v6M90 40v6M58 65h4"/>
      <g class="mr"><rect x="2" y="2" width="116" height="38" rx="3"/><text x="8" y="13">Living room</text>
@@ -79,7 +78,7 @@
   <p id="log" aria-live="polite">Waiting for a gesture.</p>
   <div class="btns">
    <button id="bL">Lights (L)</button>
-   <button id="bC">Next (→)</button>
+   <button id="bC">Next channel (→)</button>
    <button id="bD">Door (D)</button>
    <button id="bB">Blinds (B)</button>
    <button id="bP">Power (P)</button>
@@ -91,9 +90,7 @@
     <thead><tr><th>Action</th><th>Hand</th><th>Say</th><th>Head &amp; face</th></tr></thead>
     <tbody>
      <tr><th scope="row">Flick the lights</th><td>Pinch</td><td>"Lights"</td><td>Nod</td></tr>
-     <tr><th scope="row">Next / previous (TV or jukebox)</th><td>Swipe</td><td>"Next", "Previous"</td><td>Tilt head</td></tr>
-     <tr><th scope="row">Switch TV / Jukebox</th><td>Horns 🤘</td><td>"TV", "Music", "Switch"</td><td>Raise eyebrows</td></tr>
-     <tr><th scope="row">Play / pause music</th><td>Open palm, held still</td><td>"Play", "Pause"</td><td>&ndash;</td></tr>
+     <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
      <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
      <tr><th scope="row">Close or open the blinds</th><td>&ndash;</td><td>"Blinds"</td><td>&ndash;</td></tr>
@@ -105,26 +102,7 @@
   </div>
  </main>
 
- <aside class="col r" aria-label="Jukebox, instructor and command history">
-  <section class="jukebox" id="jukebox" aria-labelledby="jTitle">
-   <h2 id="jTitle">Haunted Jukebox</h2>
-   <div class="jnow" id="jNow" hidden>
-    <div class="jart">
-     <i class="jdisc" aria-hidden="true"></i>
-     <img id="jArt" alt="" hidden>
-     <span class="jnotes" aria-hidden="true"><i>♪</i><i>♫</i><i>♪</i></span>
-    </div>
-    <div class="jmeta"><b id="jTrack"></b><span id="jArtist"></span><span class="jlist" id="jList"></span><span class="jdev" id="jDevice"></span></div>
-   </div>
-   <div class="jprog" id="jProg" role="progressbar" aria-label="Track progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i id="jBar"></i></div>
-   <div class="jctl" id="jCtl" hidden>
-    <button id="jPrev" type="button" aria-label="Previous">⏮</button>
-    <button id="jPlay" type="button" aria-label="Play">▶</button>
-    <button id="jNext" type="button" aria-label="Next">⏭</button>
-   </div>
-   <button id="jConnect" type="button" hidden>Connect Spotify</button>
-   <p id="jStatus" aria-live="polite"></p>
-  </section>
+ <aside class="col r" aria-label="Instructor and command history">
   <section class="coach" id="coach" aria-labelledby="coachTitle">
    <h2 id="coachTitle" tabindex="-1">Instructor</h2>
    <p id="coachWho"></p>
@@ -148,7 +126,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="room3d.js"></script>
 <script src="audio.js"></script>
-<script src="spotify.js"></script>
 <script src="academy.js"></script>
 <script src="monsters.js"></script>
 <script src="script.js"></script>

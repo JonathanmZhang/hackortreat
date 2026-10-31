@@ -4,7 +4,7 @@
 'use strict';
 const AC=window.AudioContext||window.webkitAudioContext,SKEY='poltergeist-sound';
 const $=id=>document.getElementById(id);
-let ctx=null,master=null,revIn=null,noiseBuf=null,windG=null,windF=null,ambG=null,ambRev=null,ducked=false,started=false;
+let ctx=null,master=null,revIn=null,noiseBuf=null,windG=null,windF=null,started=false;
 let vol=.6,muted=false,heartOn=false,heartT0=0,bump=0,heartTimer=0;
 try{const s=JSON.parse(localStorage.getItem(SKEY)||'{}');if(typeof s.vol==='number')vol=Math.min(1,Math.max(0,s.vol));muted=s.muted===true}catch(e){}
 const level=()=>muted?0:vol*vol*1.4; // squared so the slider feels even
@@ -21,20 +21,16 @@ function noise(t,dur){const s=ctx.createBufferSource();s.buffer=noiseBuf;s.loop=
 function env(g,t,a,peak,d){g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)}
 // Send a node to the mix, plus some of it to the echo (reverb) for a haunted-room tail.
 function out(n,wet){n.connect(master);if(wet){const w=gain(wet);n.connect(w);w.connect(revIn)}}
-// Same, through the ambience bus (both the dry sound and its echo), so Spotify can duck it while one-shots stay at full volume.
-function outAmb(n,wet){n.connect(ambG);if(wet){const w=gain(wet);n.connect(w);w.connect(ambRev)}}
-const DUCK=.25;
-function duck(on){ducked=!!on;if(ctx&&ambG){const v=ducked?DUCK:1;ambG.gain.setTargetAtTime(v,ctx.currentTime,.4);ambRev.gain.setTargetAtTime(v,ctx.currentTime,.4)}}
 
 // ---------- Ambience: drone, wind, creaks ----------
 function drone(){
- const lp=filt('lowpass',240,3),g=gain(.2);lp.connect(g);outAmb(g,.25);
+ const lp=filt('lowpass',240,3),g=gain(.2);lp.connect(g);out(g,.25);
  [[55,'sawtooth',.4],[55.35,'sawtooth',.4],[82.4,'sine',.5],[110.3,'triangle',.25]].forEach(([f,ty,v])=>{
   const o=ctx.createOscillator();o.type=ty;o.frequency.value=f;const x=gain(v);o.connect(x);x.connect(lp);o.start()});
  const l=ctx.createOscillator(),lg=gain(110);l.frequency.value=.06;l.connect(lg);lg.connect(lp.frequency);l.start()}
 function wind(){
  const s=ctx.createBufferSource();s.buffer=noiseBuf;s.loop=true;
- windF=filt('bandpass',500,.8);windG=gain(.01);s.connect(windF);windF.connect(windG);outAmb(windG,.4);s.start()}
+ windF=filt('bandpass',500,.8);windG=gain(.01);s.connect(windF);windF.connect(windG);out(windG,.4);s.start()}
 function gust(){
  const t=T(),dur=rnd(3,6.5);
  windG.gain.setTargetAtTime(rnd(.05,.12),t,dur*.2);windG.gain.setTargetAtTime(.01,t+dur*.5,dur*.2);
@@ -46,7 +42,7 @@ function creak(){
  const o=osc('sawtooth',f,t,dur);o.frequency.linearRampToValueAtTime(f*rnd(.6,1.5),t+dur);
  const bp=filt('bandpass',rnd(350,900),5),tr=gain(.6),g=gain(0);
  const l=osc('sine',rnd(14,26),t,dur),lg=gain(.4);l.connect(lg);lg.connect(tr.gain); // stuttery wobble
- o.connect(bp);bp.connect(tr);tr.connect(g);env(g,t,.08,.3,dur);outAmb(g,.5)}
+ o.connect(bp);bp.connect(tr);tr.connect(g);env(g,t,.08,.3,dur);out(g,.5)}
 function creakLoop(){setTimeout(()=>{creak();creakLoop()},rnd(7000,17000))}
 
 // ---------- One-shot sounds ----------
@@ -135,7 +131,6 @@ function build(){
  const conv=ctx.createConvolver(),len=ctx.sampleRate*1.8|0,ir=ctx.createBuffer(2,len,ctx.sampleRate);
  for(let c=0;c<2;c++){const x=ir.getChannelData(c);for(let i=0;i<len;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
  conv.buffer=ir;revIn=gain(.7);revIn.connect(conv);conv.connect(master);
- const v=ducked?DUCK:1;ambG=gain(v);ambG.connect(master);ambRev=gain(v);ambRev.connect(revIn); // music may already be playing
  drone();wind();gust();creakLoop()}
 // Browsers only allow sound after a click or key press, so this runs from those.
 function start(){
@@ -160,7 +155,7 @@ paintUI();
 // Sounds are skipped until the first click and while the tab is hidden.
 const play=f=>(...a)=>{if(started&&!document.hidden)try{f(...a)}catch(e){}};
 window.Sfx={
- start,heart,duck,
+ start,heart,
  click:play(click),tv:play(tv),slam:play(slam),chime:play(chime),whoo:play(whoo),
  pluck:play(pluck),spell:play(spell),fizzle:play(fizzle),howl:play(howl),bite:play(bite),shatter:play(shatter),
  scare:play(()=>{sting(false);bump=Math.min(.6,bump+.25);if(Math.random()<.5)gasp();else scream(.7,650)}),
