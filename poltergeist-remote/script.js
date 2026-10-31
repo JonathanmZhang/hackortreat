@@ -10,6 +10,56 @@ function thud(){try{const a=new (window.AudioContext||window.webkitAudioContext)
  g.gain.setValueAtTime(.6,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.3);
  o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.3)}catch(e){}}
 
+// ---------- Gesture caption ----------
+// Visual feedback above the camera. #log is the aria-live announcement, so the caption is aria-hidden.
+const GESTURES={
+ pinch:{icon:'🤏',name:'Pinch',action:'Flick the lights'},
+ fist:{icon:'✊',name:'Fist',action:'Slam the door'},
+ swipeL:{icon:'👋',name:'Swipe left',action:'Previous channel'},
+ swipeR:{icon:'👋',name:'Swipe right',action:'Next channel'},
+ nod:{icon:'🙂',name:'Nod',action:'Flick the lights'},
+ tiltL:{icon:'🙃',name:'Tilt head left',action:'Previous channel'},
+ tiltR:{icon:'🙃',name:'Tilt head right',action:'Next channel'},
+ mouth:{icon:'😮',name:'Open mouth',action:'Slam the door'},
+ peace:{icon:'✌️',name:'Peace sign',action:'Next room'}};
+const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️'};
+const CAP={frames:3,linger:400,fired:1200};
+// capVia names what triggered the next act(): a GESTURES key, a spoken word or a key label.
+let camOn=false,capVia=null,capCand=null,capKey=null,capRun=0,capHeld=null,capGap=0,capSeen=0,capUntil=0,capTimer=0,capSig='',capElapsed=0,capShown=[];
+function paint(state,icon,name,action,hold){
+ const el=$('gcap'),timed=hold!==undefined,sig=[state,icon,name,action,timed].join('|'),fresh=sig!==capSig;
+ capShown=[state,icon,name,action];
+ if(fresh){capSig=sig;$('gcapIcon').textContent=icon;$('gcapName').textContent=name;$('gcapAct').textContent=action}
+ if(fresh||state==='fired'){el.className='gcap';void el.offsetWidth;el.className='gcap '+state+(timed?' hold':'')}
+ // The bar is a CSS animation started part-way through, so it needs no per-frame DOM writes.
+ if(timed&&(fresh||hold<capElapsed)){const b=$('gcapBar');b.style.animation='none';void b.offsetWidth;b.style.animation='';b.style.animationDuration=FACE.hold+'ms';b.style.animationDelay=-hold+'ms'}
+ capElapsed=timed?hold:0;
+}
+// States: idle, detecting (x = ms held, for hold gestures), cooldown (x = optional note), fired (x = {text,src}).
+// detecting and cooldown only record a candidate; captionTick decides once per frame what to show.
+function setCaption(key,state,x){
+ if(state==='idle'){paint('idle','',camOn?'Show a hand or your face…':'Start the camera to see gestures here','');return}
+ if(state==='fired'){
+  const g=GESTURES[key];capUntil=performance.now()+CAP.fired;capHeld=g?key:null;capGap=0;
+  paint('fired',g?'✓':VIA[x.src],g?g.name:key||'Button',x.text);
+  clearTimeout(capTimer);capTimer=setTimeout(()=>{if(!camOn)setCaption(null,'idle')},CAP.fired);return}
+ if(!capCand)capCand={key,state,x};
+}
+function captionTick(){
+ const c=capCand,now=performance.now();capCand=null;
+ if(c&&c.key===capKey)capRun++;else{capKey=c?c.key:null;capRun=c?1:0}
+ if(c&&c.key===capHeld)capGap=0;else if(++capGap>=2)capHeld=null;
+ const show=capRun>=CAP.frames;
+ // A fired confirmation stays up, unless the user tries again and is blocked: release and repeat, or another gesture for that action.
+ if(now<capUntil&&!(show&&c.state==='cooldown'&&c.key!==capHeld))return;
+ capUntil=0;
+ if(show){const g=GESTURES[c.key],cd=c.state==='cooldown';capSeen=now;
+  paint(c.state,g.icon,g.name,cd?g.action+' ('+(c.x||'cooling down')+')':g.action,cd?undefined:c.x)}
+ else if(now-capSeen>CAP.linger)setCaption(null,'idle');
+ else if(capElapsed)paint(...capShown);
+}
+setCaption(null,'idle');
+
 // ---------- Command history ----------
 // Every action is recorded with its time and the input that triggered it (hand, voice, head, face, button, keyboard).
 // Saved in localStorage so it survives a page reload.
@@ -27,7 +77,7 @@ function renderHist(){
   t.textContent=d.toDateString()===todayStr?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}):d.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   a.className='what';a.textContent=h.text;s.className='src';s.textContent=h.src;
   li.append(t,a,s);ul.appendChild(li)})}
-function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist()}
+function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist();setCaption(capVia,'fired',{text,src});capVia=null}
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
@@ -36,7 +86,7 @@ function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);act('Chann
 function slam(src){Room.slam();thud();
  plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
-addEventListener('keydown',e=>{if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard')});
+addEventListener('keydown',e=>{capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -69,11 +119,11 @@ function detect(lm){
  const now=performance.now(),x=1-lm[0].x;
  hist.push({t:now,x});while(hist.length&&now-hist[0].t>350)hist.shift();
  const ext=(t,p)=>dist(lm[t],lm[0])>dist(lm[p],lm[0]);
- if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500))nextRoom('hand');return}
- if(pinch){if(ready('lights',1200))lights('hand');return}
- if(curled){if(ready('slam',1500))slam('hand');return}
+ if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500)){capVia='peace';nextRoom('hand')}else setCaption('peace','cooldown');return}
+ if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
+ if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
  if(hist.length>3){const dx=x-hist[0].x;
-  if(Math.abs(dx)>0.28&&ready('channel',900)){channel(dx>0?1:-1,'hand');hist.length=0}}
+  if(Math.abs(dx)>0.28&&ready('channel',900)){capVia=dx>0?'swipeR':'swipeL';channel(dx>0?1:-1,'hand');hist.length=0}}
 }
 
 // ---------- Head & face (MediaPipe Face Mesh) ----------
@@ -85,22 +135,31 @@ function detectFace(lm){
  // Open mouth (hold briefly) -> slam the door
  if(dist(lm[13],lm[14])/faceH>FACE.mouth){
   mouthSince=mouthSince||now;
-  if(now-mouthSince>FACE.hold&&ready('slam',1500)){slam('face');pitchHist.length=0}
+  if(now-mouthSince>FACE.hold){if(ready('slam',1500)){capVia='mouth';slam('face');pitchHist.length=0}else setCaption('mouth','cooldown')}
+  else setCaption('mouth','detecting',now-mouthSince);
  }else mouthSince=0;
  // Head tilt toward a shoulder (hold briefly) -> change channel. Tilt right = next, left = previous.
  const roll=Math.atan2(lm[263].y-lm[33].y,lm[263].x-lm[33].x)*180/Math.PI,big=Math.abs(roll)>FACE.tilt;
  if(Math.abs(roll)<8)tiltArmed=true;
+ const tilt=roll<0?'tiltR':'tiltL';
  if(big&&tiltArmed){
   tiltSince=tiltSince||now;
-  if(now-tiltSince>FACE.hold){if(ready('channel',900))channel(roll<0?1:-1,'head');tiltArmed=false;tiltSince=0;pitchHist.length=0}
+  if(now-tiltSince>FACE.hold){if(ready('channel',900)){capVia=tilt;channel(roll<0?1:-1,'head')}else setCaption(tilt,'cooldown');tiltArmed=false;tiltSince=0;pitchHist.length=0}
+  else setCaption(tilt,'detecting',now-tiltSince);
  }else if(!big)tiltSince=0;
+ // A tilt fires once per hold: once the cooldown ends, the head has to straighten before it can fire again.
+ else setCaption(tilt,'cooldown',now-cool.channel<900?'':'straighten head to repeat');
  if(big)return;
  // Nod (down and back up) -> flick the lights
  const eyeY=(lm[33].y+lm[263].y)/2,pitch=(lm[1].y-eyeY)/((lm[152].y-eyeY)||.1);
  pitchHist.push({t:now,p:pitch});while(pitchHist.length&&now-pitchHist[0].t>900)pitchHist.shift();
  if(pitchHist.length>6){
   const ps=pitchHist.map(h=>h.p),hi=Math.max(...ps),lo=Math.min(...ps),range=hi-lo;
-  if(range>FACE.nod&&Math.abs(pitch-ps[0])<range*.4&&ready('lights',1200)){lights('head');pitchHist.length=0}
+  if(range>FACE.nod){
+   if(Math.abs(pitch-ps[0])>=range*.4)setCaption('nod','detecting');
+   else if(ready('lights',1200)){capVia='nod';lights('head');pitchHist.length=0}
+   else setCaption('nod','cooldown');
+  }
  }
 }
 
@@ -108,13 +167,16 @@ function detectFace(lm){
 // Say the names on the page: "Lights", "Channel", "Slam" (or "Door").
 function voiceCmd(t){
  t=t.toLowerCase();
- if(/\bliving\b/.test(t)){goRoom(0,'voice');return true}
- if(/\bbed(room)?\b/.test(t)){goRoom(1,'voice');return true}
- if(/\bkitchen\b/.test(t)){goRoom(2,'voice');return true}
- if(/\b(slam|slammed|slams|door)\b/.test(t)){if(ready('slam',1500))slam('voice');return true}
- if(/\b(lights?|flick)\b/.test(t)){if(ready('lights',1200))lights('voice');return true}
- if(/\b(previous|back)\b/.test(t)){if(ready('channel',900))channel(-1,'voice');return true}
- if(/\b(channel|next)\b/.test(t)){if(ready('channel',900))channel(1,'voice');return true}
+ let m;const said=()=>capVia='"'+m[0][0].toUpperCase()+m[0].slice(1)+'"';
+ // goRoom skips act() when already in that room, so clear capVia here.
+ const go=i=>{said();goRoom(i,'voice');capVia=null;return true};
+ if(m=t.match(/\bliving\b/))return go(0);
+ if(m=t.match(/\bbed(room)?\b/))return go(1);
+ if(m=t.match(/\bkitchen\b/))return go(2);
+ if(m=t.match(/\b(slam|slammed|slams|door)\b/)){if(ready('slam',1500)){said();slam('voice')}return true}
+ if(m=t.match(/\b(lights?|flick)\b/)){if(ready('lights',1200)){said();lights('voice')}return true}
+ if(m=t.match(/\b(previous|back)\b/)){if(ready('channel',900)){said();channel(-1,'voice')}return true}
+ if(m=t.match(/\b(channel|next)\b/)){if(ready('channel',900)){said();channel(1,'voice')}return true}
  return false;
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -164,7 +226,8 @@ $('startBtn').onclick=async()=>{
     if(face&&$('faceOn').checked){try{await face.send({image:v})}catch(e){face=null;faceLm=null;log('Face model could not load. Hand, voice, buttons and keys still work.')}}
     else if(faceLm){faceLm=null;render()}
    }
-   requestAnimationFrame(loop)};loop();
+   captionTick();
+   requestAnimationFrame(loop)};camOn=true;captionTick();loop();
   $('startBtn').style.display='none';
  }catch(e){msg.textContent='Camera or hand model could not load ('+(e.name||'error')+'). Use voice, the buttons or keys instead.'}
 };

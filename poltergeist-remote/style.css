@@ -23,6 +23,21 @@ header p{color:var(--mute);margin:10px 0 22px;max-width:58ch;line-height:1.55}
 .plug b,.score b{color:var(--ecto)}
 .score{right:auto;left:3%}
 .side{display:flex;flex-direction:column;gap:14px}
+.gcap{position:relative;flex:none;display:flex;align-items:center;gap:10px;height:4.2rem;padding:0 14px;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px;font-size:1.2rem;font-weight:700;line-height:1.2;box-shadow:0 12px 32px #000a}
+.gi{flex:none;font-size:1.5rem;color:var(--ecto)}
+.gt{min-width:0}
+#gcapName{color:var(--ecto)}
+#gcapAct{color:var(--pump2)}
+.arrow{color:var(--mute)}
+.gcap.idle #gcapName{color:var(--mute);font-weight:400}
+.gcap.idle .gi,.gcap.idle .arrow{display:none}
+.gcap.cooldown #gcapName,.gcap.cooldown #gcapAct,.gcap.cooldown .gi{color:var(--mute)}
+.gcap.fired{border-color:var(--pump);box-shadow:0 0 18px #ff7a1a66,0 12px 32px #000a;animation:gpulse 1.2s ease-out}
+@keyframes gpulse{from{box-shadow:0 0 38px #ff7a1a,0 12px 32px #000a}}
+.bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--ecto);transform:scaleX(0);transform-origin:left}
+.gcap.hold .bar{animation:gfill .35s linear forwards}
+@keyframes gfill{to{transform:scaleX(1)}}
+@media(max-width:420px),(min-width:821px) and (max-width:1000px){.gcap{font-size:1.02rem}}
 .cam{position:relative;aspect-ratio:4/3;background:#0b0714;overflow:hidden;border-color:#1f6a55;box-shadow:0 0 22px #7df3c622,0 12px 32px #000a,inset 0 0 30px #000}
 .cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 .cam video{opacity:.5}
