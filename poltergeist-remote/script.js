@@ -18,8 +18,11 @@ const GESTURES={
  tiltL:{icon:'🙃',name:'Tilt head left',action:'Previous channel'},
  tiltR:{icon:'🙃',name:'Tilt head right',action:'Next channel'},
  mouth:{icon:'😮',name:'Open mouth',action:'Slam the door'},
- peace:{icon:'✌️',name:'Peace sign',action:'Next room'}};
-const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️'};
+ peace:{icon:'✌️',name:'Peace sign',action:'Next room'},
+ thumb:{icon:'👍',name:'Thumbs up',get action(){return Monster.powerName()}},
+ point:{icon:'☝️',name:'Point',action:'Grab'},
+ turn:{icon:'↔️',name:'Turn head',get action(){return Monster.powerName()}}};
+const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️',hover:'🤚',game:'✨'};
 const CAP={frames:3,linger:400,fired:1200};
 // capVia names what triggered the next act(): a GESTURES key, a spoken word or a key label.
 let camOn=false,capVia=null,capCand=null,capKey=null,capRun=0,capHeld=null,capGap=0,capSeen=0,capUntil=0,capTimer=0,capSig='',capElapsed=0,capShown=[];
@@ -75,17 +78,21 @@ function renderHist(){
   a.className='what';a.textContent=h.text;s.className='src';s.textContent=h.src;
   li.append(t,a,s);ul.appendChild(li)})}
 function act(text,src){log(text+'.');cmds.push({t:Date.now(),text,src});if(cmds.length>HMAX)cmds.shift();saveHist();renderHist();setCaption(capVia,'fired',{text,src});capVia=null}
+// note: feedback that is not a command (a failed grab, a garlic wearer). Shown in the log and caption, not saved in the history.
+function note(text,src){log(text);setCaption(capVia,'fired',{text,src:src||'game'});capVia=null}
+function award(n){score+=n;$('score').textContent=score}
 $('histClear').onclick=()=>{cmds=[];saveHist();renderHist();log('History cleared.')};
 renderHist();
 
-function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);Academy.on('lights');if(!lightsOn)Academy.on('lightsOff');act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(1)}
-function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();Academy.on('channel');act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(1)}
-function slam(src){Room.slam();Sfx.slam();Academy.on('door');
- plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(3)}
-function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);if(blindsOn)Academy.on('blinds');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
+function lights(src){lightsOn=!lightsOn;Room.lights(lightsOn);Sfx.click(lightsOn);Academy.on('act');Academy.on('lights');if(!lightsOn)Academy.on('lightsOff');act('Lights '+(lightsOn?'on':'off')+' ('+ROOMS[cur]+')',src);haunt(Monster.fear('lights'))}
+function channel(d,src){ch=(ch+d+CH.length)%CH.length;Room.tv(CH[ch]);Sfx.tv();Academy.on('act');Academy.on('channel');act('Channel '+(ch+1)+': '+CH[ch].split('<br>')[1]+' ('+ROOMS[cur]+')',src);haunt(Monster.fear('channel'))}
+function slam(src){Room.slam();Sfx.slam();Academy.on('act');Academy.on('door');
+ plugOn=false;$('plugState').textContent='OFF';setTimeout(()=>{plugOn=true;$('plugState').textContent='ON'},1400);act('Door slammed, smart plug triggered ('+ROOMS[cur]+')',src);haunt(Monster.fear('door'))}
+function blinds(src){blindsOn=!blindsOn;Room.blinds&&Room.blinds(blindsOn);Sfx.click(false);Academy.on('act');Academy.on(blindsOn?'blinds':'blindsOpen');act('Blinds '+(blindsOn?'closed':'open')+' ('+ROOMS[cur]+')',src)}
 $('bB').onclick=()=>blinds('button');
 $('bL').onclick=()=>lights('button');$('bC').onclick=()=>channel(1,'button');$('bD').onclick=()=>slam('button');
-addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
+$('bP').onclick=()=>{if(ready('power',1400))Monster.use('button')};$('bG').onclick=()=>Monster.grab(null,'button');
+addEventListener('keydown',e=>{if(document.body.classList.contains('building'))return;capVia={ArrowRight:'→',ArrowLeft:'←'}[e.key]||(e.key||'').toUpperCase();if(e.key==='l'||e.key==='L')lights('keyboard');if(e.key==='ArrowRight')channel(1,'keyboard');if(e.key==='ArrowLeft')channel(-1,'keyboard');if(e.key==='d'||e.key==='D')slam('keyboard');if(e.key==='b'||e.key==='B')blinds('keyboard');if(e.key==='g'||e.key==='G')Monster.grab(null,'keyboard');if((e.key==='p'||e.key==='P')&&ready('power',1400))Monster.use('keyboard');if(e.key>='1'&&e.key<='3')goRoom(+e.key-1,'keyboard');capVia=null});
 
 // ---------- Rooms and visitors ----------
 // Visitors wander into a random room every so often. Be in their room when you act and they get scared.
@@ -100,7 +107,8 @@ function paintTabs(){[...tabs.children].forEach((b,i)=>b.setAttribute('aria-pres
 function goRoom(i,src){if(i===cur)return;RS[cur]={lights:lightsOn,ch,blinds:blindsOn};cur=i;lightsOn=RS[i].lights;ch=RS[i].ch;blindsOn=RS[i].blinds;
  Room.setRoom(i);Room.lights(lightsOn);Room.tv(CH[ch]);Room.blinds&&Room.blinds(blindsOn);paintTabs();sync();hideAlert();act('Moved to the '+ROOMS[i],src||'button')}
 function nextRoom(src){goRoom((cur+1)%ROOMS.length,src)}
-function haunt(n){const r=Room.scare(n<3?n*Academy.f:n);if(!r.hit)return;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();Academy.on('scare');if(r.fled)Academy.on('flee');score+=r.fled?60:10;$('score').textContent=score;log(r.fled?'The visitor ran screaming! +60':'Spooked them! +10')}
+// n = fear to add (already scaled by the monster: see Monster.fear). 0 means this action does not scare. by = optional label for the log.
+function haunt(n,by){if(!(n>0))return false;const r=Room.scare(n);if(!r.hit)return false;if(r.fled){here[cur]=false;Sfx.flee()}else Sfx.scare();sync();Academy.on('scare');if(r.fled)Academy.on('flee');award(r.fled?60:10);log((by?by+': ':'')+(r.fled?'The visitor ran screaming! +60':'Spooked them! +10'));return true}
 function hideAlert(){clearTimeout(alertT);$('alert').hidden=true}
 function showAlert(t,go){hideAlert();$('alertText').textContent=t;$('alertGo').hidden=go==null;$('alertGo').onclick=()=>goRoom(go,'button');$('alert').hidden=false;alertT=setTimeout(hideAlert,9000)}
 Room.on=(type,i)=>{const n=ROOMS[i];
@@ -122,6 +130,9 @@ function detect(lm){
  hist.push({t:now,x});while(hist.length&&now-hist[0].t>350)hist.shift();
  const ext=(t,p)=>dist(lm[t],lm[0])>dist(lm[p],lm[0]);
  if(ext(8,6)&&ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('room',1500)){capVia='peace';nextRoom('hand')}else setCaption('peace','cooldown');return}
+ const thumb=curled&&dist(lm[4],lm[0])/scale>1.2&&lm[4].y<lm[3].y&&lm[3].y<lm[2].y&&lm[4].y<lm[5].y-scale*.4;
+ if(thumb){if(ready('power',1400)){capVia='thumb';Monster.use('hand')}else setCaption('thumb','cooldown');return}
+ if(!pinch&&ext(8,6)&&!ext(12,10)&&!ext(16,14)&&!ext(20,18)){if(ready('grab',900)){capVia='point';Monster.grab(null,'hand')}else setCaption('point','cooldown');return}
  if(pinch){if(ready('lights',1200)){capVia='pinch';lights('hand')}else setCaption('pinch','cooldown');return}
  if(curled){if(ready('slam',1500)){capVia='fist';slam('hand')}else setCaption('fist','cooldown');return}
  if(hist.length>3){const dx=x-hist[0].x;
@@ -130,8 +141,8 @@ function detect(lm){
 
 // ---------- Head & face (MediaPipe Face Mesh) ----------
 // Tune these if it triggers too easily or not at all.
-const FACE={nod:0.09,tilt:18,mouth:0.12,hold:350};
-const pitchHist=[];let tiltArmed=true,tiltSince=0,mouthSince=0;
+const FACE={nod:0.09,tilt:18,mouth:0.12,turn:0.3,hold:350};
+const pitchHist=[];let tiltArmed=true,tiltSince=0,mouthSince=0,yawArmed=true,yawSince=0;
 function detectFace(lm){
  const now=performance.now(),faceH=dist(lm[10],lm[152])||.1;
  // Open mouth (hold briefly) -> slam the door
@@ -152,6 +163,15 @@ function detectFace(lm){
  // A tilt fires once per hold: once the cooldown ends, the head has to straighten before it can fire again.
  else setCaption(tilt,'cooldown',now-cool.channel<900?'':'straighten head to repeat');
  if(big)return;
+ // Turn head sideways (hold briefly) -> use your monster power
+ const yaw=(lm[1].x-(lm[33].x+lm[263].x)/2)/(Math.abs(lm[263].x-lm[33].x)||.1);
+ if(Math.abs(yaw)<.12)yawArmed=true;
+ if(Math.abs(yaw)>FACE.turn){
+  if(yawArmed){yawSince=yawSince||now;
+   if(now-yawSince>FACE.hold){if(ready('power',1400)){capVia='turn';Monster.use('face');pitchHist.length=0}else setCaption('turn','cooldown');yawArmed=false;yawSince=0}
+   else setCaption('turn','detecting',now-yawSince)}
+  return}
+ yawSince=0;
  // Nod (down and back up) -> flick the lights
  const eyeY=(lm[33].y+lm[263].y)/2,pitch=(lm[1].y-eyeY)/((lm[152].y-eyeY)||.1);
  pitchHist.push({t:now,p:pitch});while(pitchHist.length&&now-pitchHist[0].t>900)pitchHist.shift();
@@ -176,6 +196,8 @@ function voiceCmd(t){
  if(m=t.match(/\bliving\b/))return go(0);
  if(m=t.match(/\bbed(room)?\b/))return go(1);
  if(m=t.match(/\bkitchen\b/))return go(2);
+ if(m=t.match(/\b(grab|take|snatch|summon)\b/)){if(ready('grab',900)){said();Monster.grab(Monster.itemIn(t),'voice')}return true}
+ if(m=t.match(/\b(bite|cast|spell|hex|curse|howl|wail|power)\b/)){if(ready('power',1400)){said();Monster.use('voice')}return true}
  if(m=t.match(/\b(slam|slammed|slams|door)\b/)){if(ready('slam',1500)){said();slam('voice')}return true}
  if(m=t.match(/\b(lights?|flick)\b/)){if(ready('lights',1200)){said();lights('voice')}return true}
  if(m=t.match(/\b(previous|back)\b/)){if(ready('channel',900)){said();channel(-1,'voice')}return true}
@@ -202,6 +224,8 @@ async function runPlan(actions,src){
   else if(a.type==='channel')setChannel(a.channel,src);
   else if(a.type==='door')slam(src);
   else if(a.type==='room')goRoom(a.room-1,src);
+  else if(a.type==='power')Monster.use(src);
+  else if(a.type==='grab')Monster.grab(a.item||null,src);
   await sleep(400)}}
 async function aiCommand(t){
  const heard=$('heard');heard.textContent='Thinking: "'+t+'"';

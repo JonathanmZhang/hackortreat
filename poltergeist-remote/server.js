@@ -20,11 +20,12 @@ const KEY = process.env.GEMINI_API_KEY || '';
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const API = (process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
 const ROOM_NAMES = ['Living room', 'Bedroom', 'Kitchen'];
+const ITEMS = ['skull', 'candle', 'pumpkin', 'spider', 'potion'];
 
 // ---------- What Gemini is told ----------
 const SYSTEM = `You are the brain of Poltergeist Remote, a smart-room demo where the user is a ghost who cannot touch anything. Turn the user's spoken request into an ordered list of actions by calling run_actions.
 
-The house has 3 rooms: 1 Living room, 2 Bedroom, 3 Kitchen. Each room has its own lights (on or off) and its own TV. The TV has 4 channels: 1 Static, 2 Haunted Home Makeover, 3 Séance Shopping, 4 Ghost News at Nine. Actions apply to the current room unless you switch rooms first. The door can be slammed (a smart plug is triggered too).
+The house has 3 rooms: 1 Living room, 2 Bedroom, 3 Kitchen. Each room has its own lights (on or off) and its own TV. The TV has 4 channels: 1 Static, 2 Haunted Home Makeover, 3 Séance Shopping, 4 Ghost News at Nine. Actions apply to the current room unless you switch rooms first. The door can be slammed (a smart plug is triggered too). The user plays a monster with a signature power: "power" uses it (a ghost wails, a vampire bites, a witch casts a spell, a werewolf howls). A witch can also "grab" one of these items: skull, candle, pumpkin, spider, potion; two held items make a spell.
 
 Rules:
 - Interpret moods and scenes creatively but sensibly (for example "scary movie night": lights off, then a spooky TV channel). Use "wait" actions (seconds) between steps for dramatic timing. Keep the whole plan short, at most 8 actions.
@@ -44,7 +45,8 @@ const TOOL = {
         items: {
           type: 'object',
           properties: {
-            type: { type: 'string', enum: ['lights', 'channel', 'door', 'room', 'wait'] },
+            type: { type: 'string', enum: ['lights', 'channel', 'door', 'room', 'wait', 'power', 'grab'] },
+            item: { type: 'string', enum: ITEMS, description: 'For grab: which item to pick up.' },
             on: { type: 'boolean', description: 'For lights: true = on, false = off.' },
             channel: { type: 'integer', minimum: 1, maximum: 4, description: 'For channel: the TV channel to switch to.' },
             room: { type: 'integer', minimum: 1, maximum: 3, description: 'For room: the room to move to.' },
@@ -82,6 +84,8 @@ function clean(inp) {
     else if (a.type === 'channel' && Number.isInteger(a.channel) && a.channel >= 1 && a.channel <= 4) out.actions.push({ type: 'channel', channel: a.channel });
     else if (a.type === 'room' && Number.isInteger(a.room) && a.room >= 1 && a.room <= 3) out.actions.push({ type: 'room', room: a.room });
     else if (a.type === 'door') out.actions.push({ type: 'door' });
+    else if (a.type === 'power') out.actions.push({ type: 'power' });
+    else if (a.type === 'grab') out.actions.push({ type: 'grab', item: ITEMS.includes(a.item) ? a.item : null });
     else if (a.type === 'wait') {
       const s = Math.min(5, Math.max(0.3, +a.seconds || 1));
       if (waited + s <= 15) { waited += s; out.actions.push({ type: 'wait', seconds: s }); }

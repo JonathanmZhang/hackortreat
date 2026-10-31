@@ -56,6 +56,7 @@
   <div class="crt">
    <div class="room" id="room">
     <div class="score">Scares: <b id="score">0</b></div>
+    <div class="held" id="held" role="status" hidden></div>
     <div class="plug">Smart plug: <b id="plugState">ON</b></div>
     <svg class="mini" id="mini" viewBox="0 0 120 86" aria-hidden="true">
      <path class="pass" d="M30 40v6M90 40v6M58 65h4"/>
@@ -80,6 +81,8 @@
    <button id="bC">Next channel (→)</button>
    <button id="bD">Door (D)</button>
    <button id="bB">Blinds (B)</button>
+   <button id="bP">Power (P)</button>
+   <button id="bG" hidden>Grab (G)</button>
   </div>
   <div class="legend">
    <table>
@@ -90,7 +93,9 @@
      <tr><th scope="row">Change the TV channel</th><td>Swipe</td><td>"Channel"</td><td>Tilt head</td></tr>
      <tr><th scope="row">Slam the door</th><td>Fist</td><td>"Slam"</td><td>Open mouth</td></tr>
      <tr><th scope="row">Switch room</th><td>Peace sign</td><td>"Kitchen", "Bedroom"</td><td>Click a tab</td></tr>
-     <tr><th scope="row">Close the blinds</th><td>&ndash;</td><td>"Blinds"</td><td>&ndash;</td></tr>
+     <tr><th scope="row">Close or open the blinds</th><td>&ndash;</td><td>"Blinds"</td><td>&ndash;</td></tr>
+     <tr><th scope="row">Use your monster power</th><td>Thumbs up</td><td>"Bite", "Cast", "Howl", "Wail"</td><td>Turn head</td></tr>
+     <tr><th scope="row">Grab something (witch)</th><td>Point</td><td>"Grab", "Grab the skull"</td><td>Hover over it</td></tr>
      <tr id="aiRow" hidden><th scope="row">Anything else (AI)</th><td>&ndash;</td><td>"Set the mood for a scary movie night"</td><td>&ndash;</td></tr>
     </tbody>
    </table>
@@ -102,9 +107,10 @@
    <h2 id="coachTitle" tabindex="-1">Instructor</h2>
    <p id="coachWho"></p>
    <p id="coachSay" aria-live="polite"></p>
+   <p id="coachHint" aria-live="polite"></p>
    <ol id="coachSteps"></ol>
    <label id="expWrap" hidden>Sunlight exposure <progress id="exp" max="100" value="0"></progress></label>
-   <button id="reBuild" type="button">Change monster</button>
+   <div class="cbtns"><button id="hintBtn" type="button">Hint</button><button id="reBuild" type="button">Change monster</button></div>
   </section>
   <details class="history" id="history">
    <summary>Command history (<span id="histCount">0</span>)</summary>
@@ -121,6 +127,7 @@
 <script src="room3d.js"></script>
 <script src="audio.js"></script>
 <script src="academy.js"></script>
+<script src="monsters.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

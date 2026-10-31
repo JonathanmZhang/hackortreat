@@ -179,3 +179,11 @@ input[type=checkbox]{accent-color:var(--mag);width:1.05rem;height:1.05rem}
 .bstats li span:last-child{color:var(--mag)}
 #bNote{min-height:3em;font-size:.9rem}
 #bGo{width:100%}
+
+/* ---------- Monster powers ---------- */
+.held{position:absolute;right:3%;bottom:5%;z-index:7;font-size:.85rem;color:var(--mute);background:#04100bcc;border:1px solid #ff2bd666;border-radius:20px;padding:4px 11px}
+.held[hidden]{display:none}
+.btns button[hidden]{display:none}
+#coachHint{margin:0 0 10px;color:#ff8fec;font-size:.88rem;min-height:1.2em}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap}
+.cbtns button:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none}
