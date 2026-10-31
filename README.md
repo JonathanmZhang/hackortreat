@@ -1,4 +1,4 @@
-# Fright-Academy
+# Fright Academy
 
 A Halloween hackathon project with four monsters and four classes. A ghost can't touch a light switch, so it controls the room without touching anything: hand gestures, your voice, or head and face movements. The other monsters have hands and paws, so they use the mouse, touch and the keyboard. Built with plain HTML, CSS, JavaScript, [Three.js](https://threejs.org) for the 3D room, [MediaPipe](https://developers.google.com/mediapipe) (Hands and Face Mesh) and the browser's Web Speech API. No build step. An optional zero-dependency Node server (`server.js`) adds free-form AI voice commands; everything else runs in the browser.
 
