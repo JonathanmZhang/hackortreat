@@ -9,41 +9,43 @@ function ready(k,ms){const n=performance.now();if(cool[k]&&n-cool[k]<ms)return f
 
 // ---------- Gesture caption ----------
 // Visual feedback above the camera. #log is the aria-live announcement, so the caption is aria-hidden.
+// An action can be a function when its label depends on what has focus; it's resolved when painted.
+const stepLabel=d=>()=>(d>0?'Next ':'Previous ')+(focus==='tv'?'channel':'song');
 const GESTURES={
  pinch:{icon:'🤏',name:'Pinch',action:'Flick the lights'},
  fist:{icon:'✊',name:'Fist',action:'Slam the door'},
- swipeL:{icon:'👋',name:'Swipe left',action:'Previous channel'},
- swipeR:{icon:'👋',name:'Swipe right',action:'Next channel'},
+ swipeL:{icon:'👋',name:'Swipe left',action:stepLabel(-1)},
+ swipeR:{icon:'👋',name:'Swipe right',action:stepLabel(1)},
  nod:{icon:'🙂',name:'Nod',action:'Flick the lights'},
- tiltL:{icon:'🙃',name:'Tilt head left',action:'Previous channel'},
- tiltR:{icon:'🙃',name:'Tilt head right',action:'Next channel'},
+ tiltL:{icon:'🙃',name:'Tilt head left',action:stepLabel(-1)},
+ tiltR:{icon:'🙃',name:'Tilt head right',action:stepLabel(1)},
  mouth:{icon:'😮',name:'Open mouth',action:'Slam the door'},
  peace:{icon:'✌️',name:'Peace sign',action:'Next room'},
  horns:{icon:'🤘',name:'Horns',action:'Switch TV / Jukebox'},
  palm:{icon:'✋',name:'Open palm',action:'Play / pause music'},
  brows:{icon:'🤨',name:'Raise eyebrows',action:'Switch TV / Jukebox'}};
-const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️'};
+const VIA={voice:'🗣️',keyboard:'⌨️',button:'🖱️','voice AI':'🤖'};
 const CAP={frames:3,linger:400,fired:1200};
 // capVia names what triggered the next act(): a GESTURES key, a spoken word or a key label.
 let camOn=false,capVia=null,capCand=null,capKey=null,capRun=0,capHeld=null,capGap=0,capSeen=0,capUntil=0,capTimer=0,capSig='',capElapsed=0,capShown=[];
-function paint(state,icon,name,action,hold){
+function paint(state,icon,name,action,hold,total){
  const el=$('gcap'),timed=hold!==undefined,sig=[state,icon,name,action,timed].join('|'),fresh=sig!==capSig;
  capShown=[state,icon,name,action];
  if(fresh){capSig=sig;$('gcapIcon').textContent=icon;$('gcapName').textContent=name;$('gcapAct').textContent=action}
  if(fresh||state==='fired'){el.className='gcap';void el.offsetWidth;el.className='gcap '+state+(timed?' hold':'')}
  // The bar is a CSS animation started part-way through, so it needs no per-frame DOM writes.
- if(timed&&(fresh||hold<capElapsed)){const b=$('gcapBar');b.style.animation='none';void b.offsetWidth;b.style.animation='';b.style.animationDuration=FACE.hold+'ms';b.style.animationDelay=-hold+'ms'}
+ if(timed&&(fresh||hold<capElapsed)){const b=$('gcapBar');b.style.animation='none';void b.offsetWidth;b.style.animation='';b.style.animationDuration=(total||FACE.hold)+'ms';b.style.animationDelay=-hold+'ms'}
  capElapsed=timed?hold:0;
 }
-// States: idle, detecting (x = ms held, for hold gestures), cooldown (x = optional note), fired (x = {text,src}).
+// States: idle, detecting (x = ms held, total = that gesture's hold time), cooldown (x = optional note), fired (x = {text,src}).
 // detecting and cooldown only record a candidate; captionTick decides once per frame what to show.
-function setCaption(key,state,x){
+function setCaption(key,state,x,total){
  if(state==='idle'){paint('idle','',camOn?'Show a hand or your face…':'Start the camera to see gestures here','');return}
  if(state==='fired'){
   const g=GESTURES[key];capUntil=performance.now()+CAP.fired;capHeld=g?key:null;capGap=0;
-  paint('fired',g?'✓':VIA[x.src],g?g.name:key||'Button',x.text);
+  paint('fired',g?'✓':VIA[x.src],g?g.name:key||(x.src==='voice AI'?'AI voice':'Button'),x.text);
   clearTimeout(capTimer);capTimer=setTimeout(()=>{if(!camOn)setCaption(null,'idle')},CAP.fired);return}
- if(!capCand)capCand={key,state,x};
+ if(!capCand)capCand={key,state,x,total};
 }
 function captionTick(){
  const c=capCand,now=performance.now();capCand=null;
@@ -53,8 +55,8 @@ function captionTick(){
  // A fired confirmation stays up, unless the user tries again and is blocked: release and repeat, or another gesture for that action.
  if(now<capUntil&&!(show&&c.state==='cooldown'&&c.key!==capHeld))return;
  capUntil=0;
- if(show){const g=GESTURES[c.key],cd=c.state==='cooldown';capSeen=now;
-  paint(c.state,g.icon,g.name,cd?g.action+' ('+(c.x||'cooling down')+')':g.action,cd?undefined:c.x)}
+ if(show){const g=GESTURES[c.key],cd=c.state==='cooldown',a=typeof g.action==='function'?g.action():g.action;capSeen=now;
+  paint(c.state,g.icon,g.name,cd?a+' ('+(c.x||'cooling down')+')':a,cd?undefined:c.x,c.total)}
  else if(now-capSeen>CAP.linger)setCaption(null,'idle');
  else if(capElapsed)paint(...capShown);
 }
